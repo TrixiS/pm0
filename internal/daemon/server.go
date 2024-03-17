@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -32,19 +33,8 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	processLogsDirpath := path.Join(s.LogsDirpath, processID)
-
-	if err := os.MkdirAll(processLogsDirpath, 0777); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	stdoutFile, err := os.OpenFile(path.Join(processLogsDirpath, "out.log"), LogFileFlag, LogFilePerm)
-
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	stderrFile, err := os.OpenFile(path.Join(processLogsDirpath, "err.log"), LogFileFlag, LogFilePerm)
+	logFilepath := path.Join(s.LogsDirpath, fmt.Sprintf("%s.log", processID))
+	logFile, err := os.OpenFile(logFilepath, LogFileFlag, LogFilePerm)
 
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -52,8 +42,8 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 
 	command := exec.Command(request.Bin, request.Args...)
 	command.Dir = request.Cwd
-	command.Stdout = stdoutFile
-	command.Stderr = stderrFile
+	command.Stdout = logFile
+	command.Stderr = logFile
 
 	err = command.Start()
 
@@ -82,8 +72,7 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 	go func() {
 		err := command.Wait()
 
-		stdoutFile.Close()
-		stderrFile.Close()
+		logFile.Close()
 
 		if err != nil {
 			// TODO: hold process state and set it to exited on exit
