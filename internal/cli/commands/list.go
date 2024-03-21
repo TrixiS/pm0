@@ -44,12 +44,9 @@ func List(ctx *command_context.CommandContext) error {
 			return err
 		}
 
-		headerColor := color.New(color.FgBlue, color.Underline).SprintfFunc()
-		idColor := color.New(color.FgBlue, color.Bold).SprintfFunc()
-
 		t := table.New("ID", "Name", "PID", "Status", "Exit code").
-			WithHeaderFormatter(headerColor).
-			WithFirstColumnFormatter(idColor)
+			WithHeaderFormatter(TableHeaderColorFunc).
+			WithFirstColumnFormatter(TableIDColorFunc)
 
 		for _, unit := range response.Units {
 			t.AddRow(
