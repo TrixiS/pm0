@@ -23,9 +23,10 @@ func Start(ctx *command_context.CommandContext) error {
 	args := ctx.CLIContext.Args().Tail()
 
 	request := pb.StartRequest{
-		Cwd:  cwd,
+		Name: ctx.CLIContext.String("name"),
 		Bin:  bin,
 		Args: args,
+		Cwd:  cwd,
 	}
 
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {

@@ -56,8 +56,14 @@ func main() {
 	app := &cli.App{
 		Commands: []*cli.Command{
 			{
-				Name:      "start",
-				Aliases:   []string{"s"},
+				Name:    "start",
+				Aliases: []string{"s"},
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "name",
+						Required: true,
+					},
+				},
 				Usage:     "start a process",
 				UsageText: "command",
 				Args:      true,

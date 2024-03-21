@@ -47,13 +47,14 @@ func List(ctx *command_context.CommandContext) error {
 		headerColor := color.New(color.FgBlue, color.Underline).SprintfFunc()
 		idColor := color.New(color.FgBlue, color.Bold).SprintfFunc()
 
-		t := table.New("ID", "PID", "Status", "Exit code").
+		t := table.New("ID", "Name", "PID", "Status", "Exit code").
 			WithHeaderFormatter(headerColor).
 			WithFirstColumnFormatter(idColor)
 
 		for _, unit := range response.Units {
 			t.AddRow(
 				unit.Id,
+				unit.Name,
 				formatNillablePointer(unit.Pid),
 				formatUnitStatus(daemon.UnitStatus(unit.Status)),
 				formatNillablePointer(unit.ExitCode),

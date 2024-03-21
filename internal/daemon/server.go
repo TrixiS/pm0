@@ -98,6 +98,7 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 
 	unitModel := UnitModel{
 		ID:   processID,
+		Name: request.Name,
 		Bin:  request.Bin,
 		CWD:  request.Cwd,
 		Args: request.Args,
@@ -163,6 +164,7 @@ func (s *DaemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResponse, 
 
 		units[unitIdx] = &pb.Unit{
 			Id:       unitID,
+			Name:     unit.Model.Name,
 			Pid:      pid,
 			Status:   uint32(unitStatus),
 			ExitCode: exitCode,

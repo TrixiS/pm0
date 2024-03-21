@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 const (
 	ProcessService_Start_FullMethodName = "/pm0.ProcessService/Start"
 	ProcessService_List_FullMethodName  = "/pm0.ProcessService/List"
+	ProcessService_Stop_FullMethodName  = "/pm0.ProcessService/Stop"
 )
 
 // ProcessServiceClient is the client API for ProcessService service.
@@ -30,6 +31,7 @@ const (
 type ProcessServiceClient interface {
 	Start(ctx context.Context, in *StartRequest, opts ...grpc.CallOption) (*StartResponse, error)
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListResponse, error)
+	Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error)
 }
 
 type processServiceClient struct {
@@ -58,12 +60,22 @@ func (c *processServiceClient) List(ctx context.Context, in *emptypb.Empty, opts
 	return out, nil
 }
 
+func (c *processServiceClient) Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error) {
+	out := new(StopResponse)
+	err := c.cc.Invoke(ctx, ProcessService_Stop_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ProcessServiceServer is the server API for ProcessService service.
 // All implementations must embed UnimplementedProcessServiceServer
 // for forward compatibility
 type ProcessServiceServer interface {
 	Start(context.Context, *StartRequest) (*StartResponse, error)
 	List(context.Context, *emptypb.Empty) (*ListResponse, error)
+	Stop(context.Context, *StopRequest) (*StopResponse, error)
 	mustEmbedUnimplementedProcessServiceServer()
 }
 
@@ -76,6 +88,9 @@ func (UnimplementedProcessServiceServer) Start(context.Context, *StartRequest) (
 }
 func (UnimplementedProcessServiceServer) List(context.Context, *emptypb.Empty) (*ListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
+}
+func (UnimplementedProcessServiceServer) Stop(context.Context, *StopRequest) (*StopResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
 }
 func (UnimplementedProcessServiceServer) mustEmbedUnimplementedProcessServiceServer() {}
 
@@ -126,6 +141,24 @@ func _ProcessService_List_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ProcessService_Stop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StopRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProcessServiceServer).Stop(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProcessService_Stop_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProcessServiceServer).Stop(ctx, req.(*StopRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ProcessService_ServiceDesc is the grpc.ServiceDesc for ProcessService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -140,6 +173,10 @@ var ProcessService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "List",
 			Handler:    _ProcessService_List_Handler,
+		},
+		{
+			MethodName: "Stop",
+			Handler:    _ProcessService_Stop_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
