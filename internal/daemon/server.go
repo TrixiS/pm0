@@ -21,35 +21,6 @@ import (
 const LogFileFlag = os.O_CREATE | os.O_RDWR | os.O_APPEND
 const LogFilePerm = 0666
 
-type UnitStatus uint32
-
-const (
-	RUNNING UnitStatus = 0
-	EXITED  UnitStatus = 1
-	FAILED  UnitStatus = 2
-	STOPPED UnitStatus = 3
-)
-
-type Unit struct {
-	Model   UnitModel
-	Command *exec.Cmd
-}
-
-func (u Unit) GetStatus() UnitStatus {
-	if u.Command.ProcessState == nil {
-		return RUNNING
-	}
-
-	switch u.Command.ProcessState.ExitCode() {
-	case -1:
-		return STOPPED
-	case 0:
-		return EXITED
-	default:
-		return FAILED
-	}
-}
-
 type DaemonServerOptions struct {
 	LogsDirpath string
 	DBFactory   func() *storm.DB
@@ -60,13 +31,13 @@ type DaemonServer struct {
 
 	Options DaemonServerOptions
 
-	units map[string]*Unit
+	units map[string]*unit
 }
 
 func NewDaemonServer(options DaemonServerOptions) *DaemonServer {
 	return &DaemonServer{
 		Options: options,
-		units:   make(map[string]*Unit),
+		units:   make(map[string]*unit),
 	}
 }
 
@@ -129,9 +100,9 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 		}
 	}()
 
-	s.units[processID] = &Unit{
-		Model:   unitModel,
-		Command: command,
+	s.units[processID] = &unit{
+		model:   unitModel,
+		command: command,
 	}
 
 	response := pb.StartResponse{
@@ -153,16 +124,16 @@ func (s *DaemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResponse, 
 		unitStatus := unit.GetStatus()
 
 		if unitStatus == RUNNING {
-			int32Pid := int32(unit.Command.Process.Pid)
+			int32Pid := int32(unit.command.Process.Pid)
 			pid = &int32Pid
 		} else {
-			int32ExitCode := int32(unit.Command.ProcessState.ExitCode())
+			int32ExitCode := int32(unit.command.ProcessState.ExitCode())
 			exitCode = &int32ExitCode
 		}
 
 		units[unitIdx] = &pb.Unit{
 			Id:       unitID,
-			Name:     unit.Model.Name,
+			Name:     unit.model.Name,
 			Pid:      pid,
 			Status:   uint32(unitStatus),
 			ExitCode: exitCode,
@@ -186,16 +157,17 @@ func (s *DaemonServer) Stop(request *pb.StopRequest, stream pb.ProcessService_St
 
 		eg.Go(func() error {
 			unit := s.getUnitByIdent(i)
+			isFound := unit != nil
 
-			if unit == nil || unit.Command.ProcessState != nil {
+			if !isFound || unit.command.ProcessState != nil {
 				return stream.Send(&pb.StopResponse{
 					Ident:   i,
-					Found:   false,
+					Found:   isFound,
 					Success: false,
 				})
 			}
 
-			err := stopProcess(unit.Command.Process)
+			err := stopProcess(unit.command.Process)
 
 			if err != nil {
 				return stream.Send(&pb.StopResponse{
@@ -216,7 +188,7 @@ func (s *DaemonServer) Stop(request *pb.StopRequest, stream pb.ProcessService_St
 	return eg.Wait()
 }
 
-func (s *DaemonServer) getUnitByIdent(ident string) *Unit {
+func (s DaemonServer) getUnitByIdent(ident string) *unit {
 	unit := s.units[ident]
 
 	if unit != nil {
@@ -224,7 +196,7 @@ func (s *DaemonServer) getUnitByIdent(ident string) *Unit {
 	}
 
 	for _, unit := range s.units {
-		if unit.Model.Name == ident && unit.GetStatus() == RUNNING {
+		if unit.model.Name == ident && unit.GetStatus() == RUNNING {
 			return unit
 		}
 	}
