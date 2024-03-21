@@ -1,6 +1,9 @@
 package daemon
 
-import "os/exec"
+import (
+	"os"
+	"os/exec"
+)
 
 type UnitStatus uint32
 
@@ -11,17 +14,18 @@ const (
 	STOPPED UnitStatus = 3
 )
 
-type unit struct {
-	model   UnitModel
-	command *exec.Cmd
+type Unit struct {
+	Model   UnitModel
+	Command *exec.Cmd
+	LogFile *os.File
 }
 
-func (u unit) GetStatus() UnitStatus {
-	if u.command.ProcessState == nil {
+func (u Unit) GetStatus() UnitStatus {
+	if u.Command.ProcessState == nil {
 		return RUNNING
 	}
 
-	switch u.command.ProcessState.ExitCode() {
+	switch u.Command.ProcessState.ExitCode() {
 	case -1:
 		return STOPPED
 	case 0:

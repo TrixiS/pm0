@@ -82,6 +82,12 @@ func main() {
 				Args:   true,
 				Action: contextProvider.Wraps(commands.Stop),
 			},
+			{
+				Name:   "restart",
+				Usage:  "restart a process",
+				Args:   true,
+				Action: contextProvider.Wraps(commands.Restart),
+			},
 		},
 	}
 

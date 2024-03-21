@@ -9,7 +9,7 @@ import (
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
 
-func Stop(ctx *command_context.CommandContext) error {
+func Restart(ctx *command_context.CommandContext) error {
 	args := ctx.CLIContext.Args()
 
 	if args.Len() == 0 {
@@ -17,9 +17,7 @@ func Stop(ctx *command_context.CommandContext) error {
 	}
 
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		stream, err := client.Stop(ctx.CLIContext.Context, &pb.StopRequest{
-			Idents: args.Slice(),
-		})
+		stream, err := client.Restart(ctx.CLIContext.Context, &pb.StopRequest{Idents: args.Slice()})
 
 		if err != nil {
 			return err
@@ -39,11 +37,11 @@ func Stop(ctx *command_context.CommandContext) error {
 			}
 
 			if response.Error != nil {
-				fmt.Printf("failed to stop unit %s: %s\n", response.Ident, *response.Error)
+				fmt.Printf("failed to restart unit %s: %s\n", response.Ident, *response.Error)
 				continue
 			}
 
-			fmt.Printf("stopped unit %s\n", response.Unit.Name)
+			fmt.Printf("restarted unit %s with PID %d\n", response.Unit.Name, *response.Unit.Pid)
 		}
 	})
 }

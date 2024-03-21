@@ -31,36 +31,69 @@ type DaemonServer struct {
 
 	Options DaemonServerOptions
 
-	units map[string]*unit
+	units map[string]*Unit
 }
 
 func NewDaemonServer(options DaemonServerOptions) *DaemonServer {
 	return &DaemonServer{
 		Options: options,
-		units:   make(map[string]*unit),
+		units:   make(map[string]*Unit),
 	}
 }
 
-// TODO: public func to start a unit (will be needed for resurrect)
+func (s DaemonServer) openUnitLogfile(unitID string) (*os.File, error) {
+	logFilepath := path.Join(s.Options.LogsDirpath, fmt.Sprintf("%s.log", unitID))
+	return os.OpenFile(logFilepath, LogFileFlag, LogFilePerm)
+}
+
+func (s DaemonServer) watchUnitProcess(unit *Unit) {
+	err := unit.Command.Wait()
+
+	unit.LogFile.Close()
+
+	if err == nil {
+		return
+	}
+
+	_, isExitErr := err.(*exec.ExitError)
+
+	if !isExitErr {
+		return
+	}
+
+	log.Printf("process %s exited: %v", unit.Model.ID, err)
+}
+
+func (s DaemonServer) getUnitByIdent(ident string) *Unit {
+	unit := s.units[ident]
+
+	if unit != nil {
+		return unit
+	}
+
+	for _, unit := range s.units {
+		if unit.Model.Name == ident {
+			return unit
+		}
+	}
+
+	return nil
+}
+
 func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb.StartResponse, error) {
-	processID, err := gonanoid.New()
+	unitID, err := gonanoid.New()
 
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	logFilepath := path.Join(s.Options.LogsDirpath, fmt.Sprintf("%s.log", processID))
-	logFile, err := os.OpenFile(logFilepath, LogFileFlag, LogFilePerm)
+	logFile, err := s.openUnitLogfile(unitID)
 
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	command := exec.Command(request.Bin, request.Args...)
-	command.Dir = request.Cwd
-	command.Stdout = logFile
-	command.Stderr = logFile
-
+	command := createUnitStartCommand(request.Bin, request.Args, request.Cwd, logFile)
 	err = command.Start()
 
 	if err != nil {
@@ -68,7 +101,7 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 	}
 
 	unitModel := UnitModel{
-		ID:   processID,
+		ID:   unitID,
 		Name: request.Name,
 		Bin:  request.Bin,
 		CWD:  request.Cwd,
@@ -84,26 +117,15 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	go func() {
-		err := command.Wait()
-
-		logFile.Close()
-
-		if err != nil {
-			_, isExitErr := err.(*exec.ExitError)
-
-			if !isExitErr {
-				return
-			}
-
-			log.Printf("process %s exited: %v", processID, err)
-		}
-	}()
-
-	s.units[processID] = &unit{
-		model:   unitModel,
-		command: command,
+	unit := &Unit{
+		Model:   unitModel,
+		Command: command,
+		LogFile: logFile,
 	}
+
+	s.units[unitModel.ID] = unit
+
+	go s.watchUnitProcess(unit)
 
 	response := pb.StartResponse{
 		Id:  unitModel.ID,
@@ -117,28 +139,8 @@ func (s *DaemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResponse, 
 	units := make([]*pb.Unit, len(s.units))
 	unitIdx := 0
 
-	for unitID, unit := range s.units {
-		var pid *int32
-		var exitCode *int32
-
-		unitStatus := unit.GetStatus()
-
-		if unitStatus == RUNNING {
-			int32Pid := int32(unit.command.Process.Pid)
-			pid = &int32Pid
-		} else {
-			int32ExitCode := int32(unit.command.ProcessState.ExitCode())
-			exitCode = &int32ExitCode
-		}
-
-		units[unitIdx] = &pb.Unit{
-			Id:       unitID,
-			Name:     unit.model.Name,
-			Pid:      pid,
-			Status:   uint32(unitStatus),
-			ExitCode: exitCode,
-		}
-
+	for _, unit := range s.units {
+		units[unitIdx] = createUnitPB(unit)
 		unitIdx += 1
 	}
 
@@ -157,51 +159,106 @@ func (s *DaemonServer) Stop(request *pb.StopRequest, stream pb.ProcessService_St
 
 		eg.Go(func() error {
 			unit := s.getUnitByIdent(i)
-			isFound := unit != nil
+			response := &pb.StopResponse{Ident: i}
 
-			if !isFound || unit.command.ProcessState != nil {
-				return stream.Send(&pb.StopResponse{
-					Ident:   i,
-					Found:   isFound,
-					Success: false,
-				})
+			if unit == nil {
+				e := fmt.Sprintf("unit %s not found", i)
+				response.Error = &e
+				return stream.Send(response)
 			}
 
-			err := stopProcess(unit.command.Process)
+			if unit.GetStatus() != RUNNING {
+				e := fmt.Sprintf("unit %s is not running", unit.Model.Name)
+				response.Error = &e
+				response.Unit = createUnitPB(unit)
+				return stream.Send(response)
+			}
+
+			err := stopProcess(unit.Command.Process)
 
 			if err != nil {
-				return stream.Send(&pb.StopResponse{
-					Ident:   i,
-					Found:   true,
-					Success: false,
-				})
+				e := err.Error()
+				response.Error = &e
+				response.Unit = createUnitPB(unit)
+				return stream.Send(response)
 			}
 
-			return stream.Send(&pb.StopResponse{
-				Ident:   i,
-				Found:   true,
-				Success: true,
-			})
+			response.Unit = createUnitPB(unit)
+			return stream.Send(response)
 		})
 	}
 
 	return eg.Wait()
 }
 
-func (s DaemonServer) getUnitByIdent(ident string) *unit {
-	unit := s.units[ident]
+func (s *DaemonServer) Restart(request *pb.StopRequest, stream pb.ProcessService_RestartServer) error {
+	eg, _ := errgroup.WithContext(context.Background())
 
-	if unit != nil {
-		return unit
+	for _, ident := range request.Idents {
+		i := ident
+
+		eg.Go(func() error {
+			unit := s.getUnitByIdent(i)
+			response := &pb.StopResponse{Ident: i}
+
+			if unit == nil {
+				e := fmt.Sprintf("unit %s not found", i)
+				response.Error = &e
+				return stream.Send(response)
+			}
+
+			unitStatus := unit.GetStatus()
+
+			if unitStatus == RUNNING {
+				if err := stopProcess(unit.Command.Process); err != nil {
+					e := err.Error()
+					response.Error = &e
+					response.Unit = createUnitPB(unit)
+					return stream.Send(response)
+				}
+			}
+
+			logFile, err := s.openUnitLogfile(unit.Model.ID)
+
+			if err != nil {
+				e := err.Error()
+				response.Error = &e
+				response.Unit = createUnitPB(unit)
+				return stream.Send(response)
+			}
+
+			command := createUnitStartCommand(
+				path.Base(unit.Command.Path),
+				unit.Command.Args[1:],
+				unit.Command.Dir,
+				logFile,
+			)
+
+			err = command.Start()
+
+			if err != nil {
+				e := err.Error()
+				response.Error = &e
+				response.Unit = createUnitPB(unit)
+				return stream.Send(response)
+			}
+
+			unitCopy := &Unit{
+				Model:   unit.Model,
+				Command: command,
+				LogFile: logFile,
+			}
+
+			s.units[unitCopy.Model.ID] = unitCopy
+
+			go s.watchUnitProcess(unitCopy)
+
+			response.Unit = createUnitPB(unitCopy)
+			return stream.Send(response)
+		})
 	}
 
-	for _, unit := range s.units {
-		if unit.model.Name == ident && unit.GetStatus() == RUNNING {
-			return unit
-		}
-	}
-
-	return nil
+	return eg.Wait()
 }
 
 func stopProcess(process *os.Process) error {
@@ -210,4 +267,40 @@ func stopProcess(process *os.Process) error {
 	}
 
 	return process.Release()
+}
+
+func createUnitPB(unit *Unit) *pb.Unit {
+	var pid *int32
+	var exitCode *int32
+
+	unitStatus := unit.GetStatus()
+
+	if unitStatus == RUNNING {
+		int32Pid := int32(unit.Command.Process.Pid)
+		pid = &int32Pid
+	} else {
+		int32ExitCode := int32(unit.Command.ProcessState.ExitCode())
+		exitCode = &int32ExitCode
+	}
+
+	return &pb.Unit{
+		Id:       unit.Model.ID,
+		Name:     unit.Model.Name,
+		Pid:      pid,
+		Status:   uint32(unitStatus),
+		ExitCode: exitCode,
+	}
+}
+
+func createUnitStartCommand(
+	bin string,
+	args []string,
+	cwd string,
+	logFile *os.File,
+) *exec.Cmd {
+	command := exec.Command(bin, args...)
+	command.Dir = cwd
+	command.Stdout = logFile
+	command.Stderr = logFile
+	return command
 }

@@ -20,9 +20,10 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ProcessService_Start_FullMethodName = "/pm0.ProcessService/Start"
-	ProcessService_List_FullMethodName  = "/pm0.ProcessService/List"
-	ProcessService_Stop_FullMethodName  = "/pm0.ProcessService/Stop"
+	ProcessService_Start_FullMethodName   = "/pm0.ProcessService/Start"
+	ProcessService_List_FullMethodName    = "/pm0.ProcessService/List"
+	ProcessService_Stop_FullMethodName    = "/pm0.ProcessService/Stop"
+	ProcessService_Restart_FullMethodName = "/pm0.ProcessService/Restart"
 )
 
 // ProcessServiceClient is the client API for ProcessService service.
@@ -32,6 +33,7 @@ type ProcessServiceClient interface {
 	Start(ctx context.Context, in *StartRequest, opts ...grpc.CallOption) (*StartResponse, error)
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListResponse, error)
 	Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (ProcessService_StopClient, error)
+	Restart(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (ProcessService_RestartClient, error)
 }
 
 type processServiceClient struct {
@@ -92,6 +94,38 @@ func (x *processServiceStopClient) Recv() (*StopResponse, error) {
 	return m, nil
 }
 
+func (c *processServiceClient) Restart(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (ProcessService_RestartClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ProcessService_ServiceDesc.Streams[1], ProcessService_Restart_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &processServiceRestartClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type ProcessService_RestartClient interface {
+	Recv() (*StopResponse, error)
+	grpc.ClientStream
+}
+
+type processServiceRestartClient struct {
+	grpc.ClientStream
+}
+
+func (x *processServiceRestartClient) Recv() (*StopResponse, error) {
+	m := new(StopResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // ProcessServiceServer is the server API for ProcessService service.
 // All implementations must embed UnimplementedProcessServiceServer
 // for forward compatibility
@@ -99,6 +133,7 @@ type ProcessServiceServer interface {
 	Start(context.Context, *StartRequest) (*StartResponse, error)
 	List(context.Context, *emptypb.Empty) (*ListResponse, error)
 	Stop(*StopRequest, ProcessService_StopServer) error
+	Restart(*StopRequest, ProcessService_RestartServer) error
 	mustEmbedUnimplementedProcessServiceServer()
 }
 
@@ -114,6 +149,9 @@ func (UnimplementedProcessServiceServer) List(context.Context, *emptypb.Empty) (
 }
 func (UnimplementedProcessServiceServer) Stop(*StopRequest, ProcessService_StopServer) error {
 	return status.Errorf(codes.Unimplemented, "method Stop not implemented")
+}
+func (UnimplementedProcessServiceServer) Restart(*StopRequest, ProcessService_RestartServer) error {
+	return status.Errorf(codes.Unimplemented, "method Restart not implemented")
 }
 func (UnimplementedProcessServiceServer) mustEmbedUnimplementedProcessServiceServer() {}
 
@@ -185,6 +223,27 @@ func (x *processServiceStopServer) Send(m *StopResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _ProcessService_Restart_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(StopRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ProcessServiceServer).Restart(m, &processServiceRestartServer{stream})
+}
+
+type ProcessService_RestartServer interface {
+	Send(*StopResponse) error
+	grpc.ServerStream
+}
+
+type processServiceRestartServer struct {
+	grpc.ServerStream
+}
+
+func (x *processServiceRestartServer) Send(m *StopResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // ProcessService_ServiceDesc is the grpc.ServiceDesc for ProcessService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -205,6 +264,11 @@ var ProcessService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Stop",
 			Handler:       _ProcessService_Stop_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "Restart",
+			Handler:       _ProcessService_Restart_Handler,
 			ServerStreams: true,
 		},
 	},

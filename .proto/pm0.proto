@@ -41,12 +41,13 @@ message StopRequest {
 
 message StopResponse {
     string ident = 1;
-    bool found = 2;
-    bool success = 3;
+    optional Unit unit = 2;
+    optional string error = 3;
 }
 
 service ProcessService {
     rpc Start(StartRequest) returns (StartResponse);
     rpc List(google.protobuf.Empty) returns (ListResponse);
     rpc Stop(StopRequest) returns (stream StopResponse);
+    rpc Restart(StopRequest) returns (stream StopResponse);
 }
