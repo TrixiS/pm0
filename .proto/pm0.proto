@@ -4,6 +4,9 @@ package pm0;
 
 option go_package = "./pb";
 
+import "google/protobuf/empty.proto";
+
+
 message StartRequest {
     string cwd = 1;
     string bin = 2;
@@ -16,6 +19,22 @@ message StartResponse {
     int32 pid = 2;
 }
 
+// TODO: add names for units
+message Unit {
+    string id = 1;
+    optional int32 pid = 2;
+    uint32 status = 3;
+    optional int32 exit_code = 4;
+    // TODO: add reload count
+    // TODO: add uptime 
+    // TODO: add cpu/memory
+}
+
+message ListResponse {
+    repeated Unit units = 1;
+}
+
 service ProcessService {
     rpc Start(StartRequest) returns (StartResponse);
+    rpc List(google.protobuf.Empty) returns (ListResponse);
 }

@@ -63,6 +63,13 @@ func main() {
 				Args:      true,
 				Action:    contextProvider.Wraps(commands.Start),
 			},
+			{
+				Name:    "list",
+				Aliases: []string{"ls"},
+				Usage:   "list processes",
+				Args:    false,
+				Action:  contextProvider.Wraps(commands.List),
+			},
 		},
 	}
 

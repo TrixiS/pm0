@@ -34,11 +34,9 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	grpcServer := grpc.NewServer()
-
 	dbFilepath := path.Join(pm0Dirpath, DaemonDBFilename)
 
-	pb.RegisterProcessServiceServer(grpcServer, &daemon.DaemonServer{
+	daemonServer := daemon.NewDaemonServer(daemon.DaemonServerOptions{
 		LogsDirpath: logsDirpath,
 		DBFactory: func() *storm.DB {
 			db, err := storm.Open(dbFilepath)
@@ -51,5 +49,7 @@ func main() {
 		},
 	})
 
+	grpcServer := grpc.NewServer()
+	pb.RegisterProcessServiceServer(grpcServer, daemonServer)
 	log.Fatal(grpcServer.Serve(lis))
 }

@@ -1,9 +1,8 @@
 package daemon
 
-type Process struct {
+type UnitModel struct {
 	ID   string `storm:"id"`
 	CWD  string
 	Bin  string
 	Args []string
-	PID  int
 }
