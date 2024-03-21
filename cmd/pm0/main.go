@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path"
@@ -56,8 +57,7 @@ func main() {
 	app := &cli.App{
 		Commands: []*cli.Command{
 			{
-				Name:    "start",
-				Aliases: []string{"s"},
+				Name: "start",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "name",
@@ -76,10 +76,16 @@ func main() {
 				Args:    false,
 				Action:  contextProvider.Wraps(commands.List),
 			},
+			{
+				Name:   "stop",
+				Usage:  "stop a process",
+				Args:   true,
+				Action: contextProvider.Wraps(commands.Stop),
+			},
 		},
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
 }

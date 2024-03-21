@@ -12,6 +12,7 @@ import (
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 	"github.com/asdine/storm/v3"
 	gonanoid "github.com/matoous/go-nanoid/v2"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -35,19 +36,18 @@ type Unit struct {
 }
 
 func (u Unit) GetStatus() UnitStatus {
-	if u.Command == nil {
-		return STOPPED
+	if u.Command.ProcessState == nil {
+		return RUNNING
 	}
 
-	if u.Command.ProcessState != nil {
-		if u.Command.ProcessState.ExitCode() == 0 {
-			return EXITED
-		}
-
+	switch u.Command.ProcessState.ExitCode() {
+	case -1:
+		return STOPPED
+	case 0:
+		return EXITED
+	default:
 		return FAILED
 	}
-
-	return RUNNING
 }
 
 type DaemonServerOptions struct {
@@ -109,8 +109,7 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 	db.Close()
 
 	if err != nil {
-		command.Process.Signal(syscall.SIGINT)
-		command.Process.Release()
+		stopProcess(command.Process)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -120,7 +119,6 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 		logFile.Close()
 
 		if err != nil {
-			// TODO: hold process state and set it to exited on exit
 			_, isExitErr := err.(*exec.ExitError)
 
 			if !isExitErr {
@@ -178,4 +176,66 @@ func (s *DaemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResponse, 
 	}
 
 	return &response, nil
+}
+
+func (s *DaemonServer) Stop(request *pb.StopRequest, stream pb.ProcessService_StopServer) error {
+	eg, _ := errgroup.WithContext(context.Background())
+
+	for _, ident := range request.Idents {
+		i := ident
+
+		eg.Go(func() error {
+			unit := s.getUnitByIdent(i)
+
+			if unit == nil || unit.Command.ProcessState != nil {
+				return stream.Send(&pb.StopResponse{
+					Ident:   i,
+					Found:   false,
+					Success: false,
+				})
+			}
+
+			err := stopProcess(unit.Command.Process)
+
+			if err != nil {
+				return stream.Send(&pb.StopResponse{
+					Ident:   i,
+					Found:   true,
+					Success: false,
+				})
+			}
+
+			return stream.Send(&pb.StopResponse{
+				Ident:   i,
+				Found:   true,
+				Success: true,
+			})
+		})
+	}
+
+	return eg.Wait()
+}
+
+func (s *DaemonServer) getUnitByIdent(ident string) *Unit {
+	unit := s.units[ident]
+
+	if unit != nil {
+		return unit
+	}
+
+	for _, unit := range s.units {
+		if unit.Model.Name == ident && unit.GetStatus() == RUNNING {
+			return unit
+		}
+	}
+
+	return nil
+}
+
+func stopProcess(process *os.Process) error {
+	if err := process.Signal(syscall.SIGINT); err != nil {
+		return err
+	}
+
+	return process.Release()
 }

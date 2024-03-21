@@ -16,15 +16,15 @@ var TableIDColorFunc = color.New(color.FgBlue, color.Bold).SprintfFunc()
 func formatUnitStatus(status daemon.UnitStatus) string {
 	switch status {
 	case daemon.RUNNING:
-		return "running"
+		return "Running"
 	case daemon.EXITED:
-		return "exited"
+		return "Exited"
 	case daemon.FAILED:
-		return "failed"
+		return "Failed"
 	case daemon.STOPPED:
-		return "stopped"
+		return "Stopped"
 	default:
-		return "unknown"
+		return "Unknown"
 	}
 }
 

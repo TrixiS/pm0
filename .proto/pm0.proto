@@ -36,16 +36,17 @@ message ListResponse {
 }
 
 message StopRequest {
-    string ident = 1;
+    repeated string idents = 1;
 }
 
 message StopResponse {
-    bool found = 1;
-    bool success = 2;
+    string ident = 1;
+    bool found = 2;
+    bool success = 3;
 }
 
 service ProcessService {
     rpc Start(StartRequest) returns (StartResponse);
     rpc List(google.protobuf.Empty) returns (ListResponse);
-    rpc Stop(StopRequest) returns (StopResponse);
+    rpc Stop(StopRequest) returns (stream StopResponse);
 }
