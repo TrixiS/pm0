@@ -12,7 +12,6 @@ message StartRequest {
     string bin = 2;
     string name = 3;
     repeated string args = 4;
-    // TODO: user?
 }
 
 message StartResponse {
@@ -45,9 +44,21 @@ message StopResponse {
     optional string error = 3;
 }
 
+message LogsRequest {
+    string ident = 1;
+    bool follow = 2;
+    uint64 lines = 3;
+}
+
+message LogsResponse {
+    string unit_name = 1;
+    repeated string lines = 2;
+}
+
 service ProcessService {
     rpc Start(StartRequest) returns (StartResponse);
     rpc List(google.protobuf.Empty) returns (ListResponse);
     rpc Stop(StopRequest) returns (stream StopResponse);
     rpc Restart(StopRequest) returns (stream StopResponse);
+    rpc Logs(LogsRequest) returns (stream LogsResponse);
 }

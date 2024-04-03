@@ -64,7 +64,7 @@ func main() {
 						Required: true,
 					},
 				},
-				Usage:     "start a process",
+				Usage:     "start a unit",
 				UsageText: "command",
 				Args:      true,
 				Action:    contextProvider.Wraps(commands.Start),
@@ -72,21 +72,38 @@ func main() {
 			{
 				Name:    "list",
 				Aliases: []string{"ls"},
-				Usage:   "list processes",
+				Usage:   "list units",
 				Args:    false,
 				Action:  contextProvider.Wraps(commands.List),
 			},
 			{
 				Name:   "stop",
-				Usage:  "stop a process",
+				Usage:  "stop a unit",
 				Args:   true,
 				Action: contextProvider.Wraps(commands.Stop),
 			},
 			{
 				Name:   "restart",
-				Usage:  "restart a process",
+				Usage:  "restart a unit",
 				Args:   true,
 				Action: contextProvider.Wraps(commands.Restart),
+			},
+			{
+				Name: "logs",
+				Flags: []cli.Flag{
+					&cli.Uint64Flag{
+						Name:     "lines",
+						Required: false,
+					},
+					&cli.BoolFlag{
+						Name:     "follow",
+						Required: false,
+						Aliases:  []string{"f"},
+					},
+				},
+				Usage:  "show unit logfile contents",
+				Args:   true,
+				Action: contextProvider.Wraps(commands.Logs),
 			},
 		},
 	}

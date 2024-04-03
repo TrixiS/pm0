@@ -1,13 +1,17 @@
 package daemon
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
 	"path"
+	"slices"
 	"syscall"
+	"time"
 
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 	"github.com/asdine/storm/v3"
@@ -20,6 +24,10 @@ import (
 
 const LogFileFlag = os.O_CREATE | os.O_RDWR | os.O_APPEND
 const LogFilePerm = 0666
+
+const LogsTailDefault int = 32
+
+// TODO: use int unit ids (string ids are inconvenient)
 
 type DaemonServerOptions struct {
 	LogsDirpath string
@@ -41,8 +49,12 @@ func NewDaemonServer(options DaemonServerOptions) *DaemonServer {
 	}
 }
 
-func (s DaemonServer) openUnitLogfile(unitID string) (*os.File, error) {
-	logFilepath := path.Join(s.Options.LogsDirpath, fmt.Sprintf("%s.log", unitID))
+func (s DaemonServer) getUnitLogFilepath(unitID string) string {
+	return path.Join(s.Options.LogsDirpath, fmt.Sprintf("%s.log", unitID))
+}
+
+func (s DaemonServer) openUnitLogFile(unitID string) (*os.File, error) {
+	logFilepath := s.getUnitLogFilepath(unitID)
 	return os.OpenFile(logFilepath, LogFileFlag, LogFilePerm)
 }
 
@@ -87,7 +99,7 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	logFile, err := s.openUnitLogfile(unitID)
+	logFile, err := s.openUnitLogFile(unitID)
 
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -114,6 +126,7 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 
 	if err != nil {
 		stopProcess(command.Process)
+		command.Process.Release()
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -218,7 +231,7 @@ func (s *DaemonServer) Restart(request *pb.StopRequest, stream pb.ProcessService
 				}
 			}
 
-			logFile, err := s.openUnitLogfile(unit.Model.ID)
+			logFile, err := s.openUnitLogFile(unit.Model.ID)
 
 			if err != nil {
 				e := err.Error()
@@ -261,12 +274,134 @@ func (s *DaemonServer) Restart(request *pb.StopRequest, stream pb.ProcessService
 	return eg.Wait()
 }
 
-func stopProcess(process *os.Process) error {
-	if err := process.Signal(syscall.SIGINT); err != nil {
+func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_LogsServer) error {
+	unit := s.getUnitByIdent(request.Ident)
+
+	if unit == nil {
+		return status.Error(codes.NotFound, "requested unit not found")
+	}
+
+	logFilepath := s.getUnitLogFilepath(unit.Model.ID)
+	logFile, err := os.OpenFile(logFilepath, os.O_RDONLY, LogFilePerm)
+
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	defer logFile.Close()
+
+	stat, err := logFile.Stat()
+
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	var tailAmount int
+
+	if request.Lines == 0 {
+		tailAmount = LogsTailDefault
+	} else {
+		tailAmount = int(request.Lines)
+	}
+
+	const NEWLINE byte = 10
+	const RETURN byte = 13
+
+	lines := make([]string, 0, tailAmount)
+	var lineBuf []byte = nil
+
+	fileSize := stat.Size()
+	tailBreakPoint := -fileSize
+
+	var tailCursor int64 = 0
+
+	for {
+		tailCursor -= 1
+
+		_, err := logFile.Seek(tailCursor, io.SeekEnd)
+
+		if err != nil {
+			break
+		}
+
+		hitBreakpoint := tailCursor == tailBreakPoint
+
+		charBuf := make([]byte, 1)
+		_, err = logFile.Read(charBuf)
+
+		if err != nil {
+			break
+		}
+
+		char := charBuf[0]
+
+		if char != NEWLINE && char != RETURN {
+			lineBuf = append(lineBuf, char)
+
+			if !hitBreakpoint {
+				continue
+			}
+		}
+
+		if len(lineBuf) > 0 {
+			slices.Reverse(lineBuf)
+			lines = append(lines, string(lineBuf))
+		}
+
+		if len(lines) >= tailAmount || hitBreakpoint {
+			break
+		}
+
+		clear(lineBuf)
+	}
+
+	slices.Reverse(lines)
+
+	err = stream.Send(&pb.LogsResponse{
+		UnitName: unit.Model.Name,
+		Lines:    lines,
+	})
+
+	if err != nil || !request.Follow {
 		return err
 	}
 
-	return process.Release()
+	_, err = logFile.Seek(0, io.SeekEnd)
+
+	if err != nil {
+		return err
+	}
+
+	for {
+		time.Sleep(time.Second)
+		scanner := bufio.NewScanner(logFile)
+
+		var lines []string = nil
+
+		for scanner.Scan() {
+			line := scanner.Text()
+			lines = append(lines, line)
+		}
+
+		if len(lines) == 0 {
+			continue
+		}
+
+		err = stream.Send(
+			&pb.LogsResponse{
+				UnitName: unit.Model.Name,
+				Lines:    lines,
+			},
+		)
+
+		if err != nil {
+			return err
+		}
+	}
+}
+
+func stopProcess(process *os.Process) error {
+	return process.Signal(syscall.SIGINT)
 }
 
 func createUnitPB(unit *Unit) *pb.Unit {

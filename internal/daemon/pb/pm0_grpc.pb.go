@@ -24,6 +24,7 @@ const (
 	ProcessService_List_FullMethodName    = "/pm0.ProcessService/List"
 	ProcessService_Stop_FullMethodName    = "/pm0.ProcessService/Stop"
 	ProcessService_Restart_FullMethodName = "/pm0.ProcessService/Restart"
+	ProcessService_Logs_FullMethodName    = "/pm0.ProcessService/Logs"
 )
 
 // ProcessServiceClient is the client API for ProcessService service.
@@ -34,6 +35,7 @@ type ProcessServiceClient interface {
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListResponse, error)
 	Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (ProcessService_StopClient, error)
 	Restart(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (ProcessService_RestartClient, error)
+	Logs(ctx context.Context, in *LogsRequest, opts ...grpc.CallOption) (ProcessService_LogsClient, error)
 }
 
 type processServiceClient struct {
@@ -126,6 +128,38 @@ func (x *processServiceRestartClient) Recv() (*StopResponse, error) {
 	return m, nil
 }
 
+func (c *processServiceClient) Logs(ctx context.Context, in *LogsRequest, opts ...grpc.CallOption) (ProcessService_LogsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ProcessService_ServiceDesc.Streams[2], ProcessService_Logs_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &processServiceLogsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type ProcessService_LogsClient interface {
+	Recv() (*LogsResponse, error)
+	grpc.ClientStream
+}
+
+type processServiceLogsClient struct {
+	grpc.ClientStream
+}
+
+func (x *processServiceLogsClient) Recv() (*LogsResponse, error) {
+	m := new(LogsResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // ProcessServiceServer is the server API for ProcessService service.
 // All implementations must embed UnimplementedProcessServiceServer
 // for forward compatibility
@@ -134,6 +168,7 @@ type ProcessServiceServer interface {
 	List(context.Context, *emptypb.Empty) (*ListResponse, error)
 	Stop(*StopRequest, ProcessService_StopServer) error
 	Restart(*StopRequest, ProcessService_RestartServer) error
+	Logs(*LogsRequest, ProcessService_LogsServer) error
 	mustEmbedUnimplementedProcessServiceServer()
 }
 
@@ -152,6 +187,9 @@ func (UnimplementedProcessServiceServer) Stop(*StopRequest, ProcessService_StopS
 }
 func (UnimplementedProcessServiceServer) Restart(*StopRequest, ProcessService_RestartServer) error {
 	return status.Errorf(codes.Unimplemented, "method Restart not implemented")
+}
+func (UnimplementedProcessServiceServer) Logs(*LogsRequest, ProcessService_LogsServer) error {
+	return status.Errorf(codes.Unimplemented, "method Logs not implemented")
 }
 func (UnimplementedProcessServiceServer) mustEmbedUnimplementedProcessServiceServer() {}
 
@@ -244,6 +282,27 @@ func (x *processServiceRestartServer) Send(m *StopResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _ProcessService_Logs_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(LogsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ProcessServiceServer).Logs(m, &processServiceLogsServer{stream})
+}
+
+type ProcessService_LogsServer interface {
+	Send(*LogsResponse) error
+	grpc.ServerStream
+}
+
+type processServiceLogsServer struct {
+	grpc.ServerStream
+}
+
+func (x *processServiceLogsServer) Send(m *LogsResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // ProcessService_ServiceDesc is the grpc.ServiceDesc for ProcessService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -269,6 +328,11 @@ var ProcessService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Restart",
 			Handler:       _ProcessService_Restart_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "Logs",
+			Handler:       _ProcessService_Logs_Handler,
 			ServerStreams: true,
 		},
 	},
