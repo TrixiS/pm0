@@ -286,8 +286,8 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 		tailAmount = min(request.Lines, LogsTailMax)
 	}
 
-	const NEWLINE byte = 10
-	const RETURN byte = 13
+	const NEWLINE byte = 0xA
+	const RETURN byte = 0xD
 
 	lines := make([]string, 0, tailAmount)
 	var lineBuf []byte = nil
@@ -304,8 +304,6 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 			break
 		}
 
-		hitBreakpoint := tailCursor == tailBreakPoint
-
 		charBuf := make([]byte, 1)
 		_, err = logFile.Read(charBuf)
 
@@ -318,7 +316,7 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 		if char != NEWLINE && char != RETURN {
 			lineBuf = append(lineBuf, char)
 
-			if !hitBreakpoint {
+			if tailCursor != tailBreakPoint {
 				continue
 			}
 		}
@@ -328,7 +326,7 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 			lines = append(lines, string(lineBuf))
 		}
 
-		if uint64(len(lines)) >= tailAmount || hitBreakpoint {
+		if uint64(len(lines)) >= tailAmount || tailCursor == tailBreakPoint {
 			break
 		}
 
