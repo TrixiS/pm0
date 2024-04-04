@@ -3,6 +3,8 @@ package daemon
 import (
 	"os"
 	"os/exec"
+
+	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
 
 type UnitStatus uint32
@@ -32,5 +34,28 @@ func (u Unit) GetStatus() UnitStatus {
 		return EXITED
 	default:
 		return FAILED
+	}
+}
+
+func (u Unit) ToPB() *pb.Unit {
+	var pid *int32
+	var exitCode *int32
+
+	unitStatus := u.GetStatus()
+
+	if unitStatus == RUNNING {
+		int32Pid := int32(u.Command.Process.Pid)
+		pid = &int32Pid
+	} else {
+		int32ExitCode := int32(u.Command.ProcessState.ExitCode())
+		exitCode = &int32ExitCode
+	}
+
+	return &pb.Unit{
+		Id:       uint32(u.Model.ID),
+		Name:     u.Model.Name,
+		Pid:      pid,
+		Status:   uint32(unitStatus),
+		ExitCode: exitCode,
 	}
 }

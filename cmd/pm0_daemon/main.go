@@ -58,6 +58,8 @@ func main() {
 		daemonServer.RestartUnit(unitModel)
 	}
 
+	db.Close()
+
 	grpcServer := grpc.NewServer()
 	pb.RegisterProcessServiceServer(grpcServer, daemonServer)
 	log.Fatal(grpcServer.Serve(lis))

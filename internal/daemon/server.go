@@ -151,7 +151,7 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 	go s.watchUnitProcess(unit)
 
 	response := pb.StartResponse{
-		Unit: createUnitPB(unit),
+		Unit: unit.ToPB(),
 	}
 
 	return &response, nil
@@ -162,7 +162,7 @@ func (s *DaemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResponse, 
 	unitIdx := 0
 
 	for _, unit := range s.units {
-		units[unitIdx] = createUnitPB(unit)
+		units[unitIdx] = unit.ToPB()
 		unitIdx += 1
 	}
 
@@ -190,7 +190,7 @@ func (s *DaemonServer) Stop(request *pb.StopRequest, stream pb.ProcessService_St
 
 			if unit.GetStatus() != RUNNING {
 				response.Error = fmt.Sprintf("unit %s is not running", unit.Model.Name)
-				response.Unit = createUnitPB(unit)
+				response.Unit = unit.ToPB()
 				return stream.Send(response)
 			}
 
@@ -198,11 +198,11 @@ func (s *DaemonServer) Stop(request *pb.StopRequest, stream pb.ProcessService_St
 
 			if err != nil {
 				response.Error = err.Error()
-				response.Unit = createUnitPB(unit)
+				response.Unit = unit.ToPB()
 				return stream.Send(response)
 			}
 
-			response.Unit = createUnitPB(unit)
+			response.Unit = unit.ToPB()
 			return stream.Send(response)
 		})
 	}
@@ -230,7 +230,7 @@ func (s *DaemonServer) Restart(request *pb.StopRequest, stream pb.ProcessService
 			if unitStatus == RUNNING {
 				if err := stopProcess(unit.Command.Process); err != nil {
 					response.Error = err.Error()
-					response.Unit = createUnitPB(unit)
+					response.Unit = unit.ToPB()
 					return stream.Send(response)
 				}
 			}
@@ -239,7 +239,7 @@ func (s *DaemonServer) Restart(request *pb.StopRequest, stream pb.ProcessService
 
 			if err != nil {
 				response.Error = err.Error()
-				response.Unit = createUnitPB(unit)
+				response.Unit = unit.ToPB()
 				return stream.Send(response)
 			}
 
@@ -247,7 +247,7 @@ func (s *DaemonServer) Restart(request *pb.StopRequest, stream pb.ProcessService
 
 			go s.watchUnitProcess(unitCopy)
 
-			response.Unit = createUnitPB(unitCopy)
+			response.Unit = unitCopy.ToPB()
 			return stream.Send(response)
 		})
 	}
@@ -364,41 +364,54 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 			continue
 		}
 
-		err = stream.Send(&pb.LogsResponse{
-			Lines: lines,
-		})
-
-		if err != nil {
+		if err := stream.Send(&pb.LogsResponse{Lines: lines}); err != nil {
 			return err
 		}
 	}
 }
 
-func stopProcess(process *os.Process) error {
-	return process.Signal(syscall.SIGINT)
+func (s *DaemonServer) Delete(request *pb.StopRequest, stream pb.ProcessService_DeleteServer) error {
+	fmt.Println("open delete")
+	db := s.Options.DBFactory()
+
+	var eg errgroup.Group
+
+	for _, unitID := range request.UnitIds {
+		id := UnitID(unitID)
+
+		eg.Go(func() error {
+			unit := s.units[id]
+
+			if unit == nil {
+				response := &pb.StopResponse{UnitId: uint32(id)}
+				response.Error = fmt.Sprintf("unit %d not found", id)
+				return stream.Send(response)
+			}
+
+			if unit.GetStatus() == RUNNING {
+				stopProcess(unit.Command.Process)
+			}
+
+			db.DeleteStruct(&unit.Model)
+			delete(s.units, unit.Model.ID)
+
+			return stream.Send(&pb.StopResponse{
+				UnitId: uint32(id),
+				Unit:   unit.ToPB(),
+			})
+		})
+	}
+
+	err := eg.Wait()
+
+	db.Commit()
+	db.Close()
+
+	return err
 }
 
-func createUnitPB(unit *Unit) *pb.Unit {
-	var pid *int32
-	var exitCode *int32
-
-	unitStatus := unit.GetStatus()
-
-	if unitStatus == RUNNING {
-		int32Pid := int32(unit.Command.Process.Pid)
-		pid = &int32Pid
-	} else {
-		int32ExitCode := int32(unit.Command.ProcessState.ExitCode())
-		exitCode = &int32ExitCode
-	}
-
-	return &pb.Unit{
-		Id:       uint32(unit.Model.ID),
-		Name:     unit.Model.Name,
-		Pid:      pid,
-		Status:   uint32(unitStatus),
-		ExitCode: exitCode,
-	}
+func stopProcess(process *os.Process) error {
+	return process.Signal(syscall.SIGINT)
 }
 
 func createUnitStartCommand(

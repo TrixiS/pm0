@@ -178,7 +178,7 @@ func (c *processServiceClient) Delete(ctx context.Context, in *StopRequest, opts
 }
 
 type ProcessService_DeleteClient interface {
-	Recv() (*StartResponse, error)
+	Recv() (*StopResponse, error)
 	grpc.ClientStream
 }
 
@@ -186,8 +186,8 @@ type processServiceDeleteClient struct {
 	grpc.ClientStream
 }
 
-func (x *processServiceDeleteClient) Recv() (*StartResponse, error) {
-	m := new(StartResponse)
+func (x *processServiceDeleteClient) Recv() (*StopResponse, error) {
+	m := new(StopResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -350,7 +350,7 @@ func _ProcessService_Delete_Handler(srv interface{}, stream grpc.ServerStream) e
 }
 
 type ProcessService_DeleteServer interface {
-	Send(*StartResponse) error
+	Send(*StopResponse) error
 	grpc.ServerStream
 }
 
@@ -358,7 +358,7 @@ type processServiceDeleteServer struct {
 	grpc.ServerStream
 }
 
-func (x *processServiceDeleteServer) Send(m *StartResponse) error {
+func (x *processServiceDeleteServer) Send(m *StopResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 

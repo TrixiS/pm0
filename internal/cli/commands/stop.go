@@ -70,9 +70,7 @@ func Stop(ctx *command_context.CommandContext) error {
 		for {
 			var response pb.StopResponse
 
-			err := stream.RecvMsg(&response)
-
-			if err != nil {
+			if err := stream.RecvMsg(&response); err != nil {
 				if errors.Is(err, io.EOF) {
 					return nil
 				}
@@ -80,12 +78,12 @@ func Stop(ctx *command_context.CommandContext) error {
 				return err
 			}
 
-			if response.Error != "" {
-				fmt.Printf("failed to stop unit %d: %s\n", response.UnitId, response.Error)
+			if response.Error == "" {
+				fmt.Printf("stopped unit %s (%d)\n", response.Unit.Name, response.UnitId)
 				continue
 			}
 
-			fmt.Printf("stopped unit %s (%d)\n", response.Unit.Name, response.UnitId)
+			fmt.Printf("failed to stop unit %d: %s\n", response.UnitId, response.Error)
 		}
 	})
 }

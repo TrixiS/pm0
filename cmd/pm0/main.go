@@ -105,6 +105,12 @@ func main() {
 				Args:   true,
 				Action: contextProvider.Wraps(commands.Logs),
 			},
+			{
+				Name:   "delete",
+				Usage:  "delete units",
+				Args:   true,
+				Action: contextProvider.Wraps(commands.Delete),
+			},
 		},
 	}
 

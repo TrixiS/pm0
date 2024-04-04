@@ -9,7 +9,7 @@ import (
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
 
-func Restart(ctx *command_context.CommandContext) error {
+func Delete(ctx *command_context.CommandContext) error {
 	args := ctx.CLIContext.Args()
 
 	if args.Len() == 0 {
@@ -23,7 +23,7 @@ func Restart(ctx *command_context.CommandContext) error {
 			return err
 		}
 
-		stream, err := client.Restart(ctx.CLIContext.Context, &pb.StopRequest{UnitIds: unitIDs})
+		stream, err := client.Delete(ctx.CLIContext.Context, &pb.StopRequest{UnitIds: unitIDs})
 
 		if err != nil {
 			return err
@@ -41,17 +41,11 @@ func Restart(ctx *command_context.CommandContext) error {
 			}
 
 			if response.Error == "" {
-				fmt.Printf(
-					"restarted unit %s (%d) with PID %d\n",
-					response.Unit.Name,
-					response.Unit.Id,
-					*response.Unit.Pid,
-				)
-
+				fmt.Printf("deleted unit %s (%d)\n", response.Unit.Name, response.Unit.Id)
 				continue
 			}
 
-			fmt.Printf("failed to restart unit %d: %s\n", response.UnitId, response.Error)
+			fmt.Printf("failed to delete unit %d: %s\n", response.UnitId, response.Error)
 		}
 	})
 }
