@@ -74,6 +74,31 @@ func (s DaemonServer) watchUnitProcess(unit *Unit) {
 	log.Printf("process %d exited: %v", unit.Model.ID, err)
 }
 
+func (s *DaemonServer) RestartUnit(model UnitModel) (*Unit, error) {
+	logFile, err := s.openUnitLogFile(model.ID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	command := createUnitStartCommand(model.Bin, model.Args, model.CWD, logFile)
+
+	if err := command.Start(); err != nil {
+		return nil, err
+	}
+
+	unitCopy := &Unit{
+		Model:   model,
+		Command: command,
+		LogFile: logFile,
+	}
+
+	s.units[unitCopy.Model.ID] = unitCopy
+	go s.watchUnitProcess(unitCopy)
+
+	return unitCopy, nil
+}
+
 func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb.StartResponse, error) {
 	db := s.Options.DBFactory()
 	defer db.Close()
@@ -159,14 +184,12 @@ func (s *DaemonServer) Stop(request *pb.StopRequest, stream pb.ProcessService_St
 			response := &pb.StopResponse{UnitId: uint32(id)}
 
 			if unit == nil {
-				e := fmt.Sprintf("unit %d not found", id)
-				response.Error = &e
+				response.Error = fmt.Sprintf("unit %d not found", id)
 				return stream.Send(response)
 			}
 
 			if unit.GetStatus() != RUNNING {
-				e := fmt.Sprintf("unit %s is not running", unit.Model.Name)
-				response.Error = &e
+				response.Error = fmt.Sprintf("unit %s is not running", unit.Model.Name)
 				response.Unit = createUnitPB(unit)
 				return stream.Send(response)
 			}
@@ -174,8 +197,7 @@ func (s *DaemonServer) Stop(request *pb.StopRequest, stream pb.ProcessService_St
 			err := stopProcess(unit.Command.Process)
 
 			if err != nil {
-				e := err.Error()
-				response.Error = &e
+				response.Error = err.Error()
 				response.Unit = createUnitPB(unit)
 				return stream.Send(response)
 			}
@@ -199,8 +221,7 @@ func (s *DaemonServer) Restart(request *pb.StopRequest, stream pb.ProcessService
 			response := &pb.StopResponse{UnitId: uint32(id)}
 
 			if unit == nil {
-				e := fmt.Sprintf("unit %d not found", id)
-				response.Error = &e
+				response.Error = fmt.Sprintf("unit %d not found", id)
 				return stream.Send(response)
 			}
 
@@ -208,42 +229,18 @@ func (s *DaemonServer) Restart(request *pb.StopRequest, stream pb.ProcessService
 
 			if unitStatus == RUNNING {
 				if err := stopProcess(unit.Command.Process); err != nil {
-					e := err.Error()
-					response.Error = &e
+					response.Error = err.Error()
 					response.Unit = createUnitPB(unit)
 					return stream.Send(response)
 				}
 			}
 
-			logFile, err := s.openUnitLogFile(unit.Model.ID)
+			unitCopy, err := s.RestartUnit(unit.Model)
 
 			if err != nil {
-				e := err.Error()
-				response.Error = &e
+				response.Error = err.Error()
 				response.Unit = createUnitPB(unit)
 				return stream.Send(response)
-			}
-
-			command := createUnitStartCommand(
-				path.Base(unit.Command.Path),
-				unit.Command.Args[1:],
-				unit.Command.Dir,
-				logFile,
-			)
-
-			err = command.Start()
-
-			if err != nil {
-				e := err.Error()
-				response.Error = &e
-				response.Unit = createUnitPB(unit)
-				return stream.Send(response)
-			}
-
-			unitCopy := &Unit{
-				Model:   unit.Model,
-				Command: command,
-				LogFile: logFile,
 			}
 
 			s.units[unitCopy.Model.ID] = unitCopy

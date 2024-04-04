@@ -35,19 +35,28 @@ func main() {
 	}
 
 	dbFilepath := path.Join(pm0Dirpath, DaemonDBFilename)
+	dbFactory := func() *storm.DB {
+		db, err := storm.Open(dbFilepath)
 
-	daemonServer := daemon.NewDaemonServer(daemon.DaemonServerOptions{
-		LogsDirpath: logsDirpath,
-		DBFactory: func() *storm.DB {
-			db, err := storm.Open(dbFilepath)
+		if err != nil {
+			log.Fatalf("db open: %v", err)
+		}
 
-			if err != nil {
-				log.Fatalf("db open: %v", err)
-			}
+		return db
+	}
 
-			return db
-		},
-	})
+	daemonServer := daemon.NewDaemonServer(daemon.DaemonServerOptions{LogsDirpath: logsDirpath, DBFactory: dbFactory})
+
+	db := dbFactory()
+	var unitModels []daemon.UnitModel
+
+	if err := db.All(&unitModels); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, unitModel := range unitModels {
+		daemonServer.RestartUnit(unitModel)
+	}
 
 	grpcServer := grpc.NewServer()
 	pb.RegisterProcessServiceServer(grpcServer, daemonServer)

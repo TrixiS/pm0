@@ -42,8 +42,8 @@ func Restart(ctx *command_context.CommandContext) error {
 				return err
 			}
 
-			if response.Error != nil {
-				fmt.Printf("failed to restart unit %d: %s\n", response.UnitId, *response.Error)
+			if response.Error != "" {
+				fmt.Printf("failed to restart unit %d: %s\n", response.UnitId, response.Error)
 				continue
 			}
 

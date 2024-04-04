@@ -40,7 +40,7 @@ message StopRequest {
 message StopResponse {
     uint32 unit_id = 1;
     optional Unit unit = 2;
-    optional string error = 3;
+    string error = 3;
 }
 
 message LogsRequest {
@@ -59,6 +59,6 @@ service ProcessService {
     rpc Stop(StopRequest) returns (stream StopResponse);
     rpc Restart(StopRequest) returns (stream StopResponse);
     rpc Logs(LogsRequest) returns (stream LogsResponse);
-    rpc Delete(StopRequest) returns (stream StartResponse); 
+    rpc Delete(StopRequest) returns (stream StopRequest); 
     // TODO: stop unit (a func to do that? so we can use it in stop, restart and delete), delete log files and db entry
 }

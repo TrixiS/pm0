@@ -80,8 +80,8 @@ func Stop(ctx *command_context.CommandContext) error {
 				return err
 			}
 
-			if response.Error != nil {
-				fmt.Printf("failed to stop unit %d: %s\n", response.UnitId, *response.Error)
+			if response.Error != "" {
+				fmt.Printf("failed to stop unit %d: %s\n", response.UnitId, response.Error)
 				continue
 			}
 
