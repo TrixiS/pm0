@@ -12,8 +12,7 @@ message Unit {
     string name = 2;
     optional int32 pid = 3;
     uint32 status = 4;
-    optional int32 exit_code = 5;
-    // TODO: add reload count
+    uint32 restarts_count = 5;
     // TODO: add uptime 
     // TODO: add cpu/memory
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 	"github.com/TrixiS/pm0/internal/utils"
 	"github.com/asdine/storm/v3"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
 
@@ -54,11 +55,22 @@ func main() {
 		log.Fatal(err)
 	}
 
+	db.Close()
+
+	var eg errgroup.Group
+
 	for _, unitModel := range unitModels {
-		daemonServer.RestartUnit(unitModel)
+		model := unitModel
+
+		eg.Go(func() error {
+			_, err := daemonServer.RestartUnit(model)
+			return err
+		})
 	}
 
-	db.Close()
+	if err := eg.Wait(); err != nil {
+		log.Fatal(err)
+	}
 
 	grpcServer := grpc.NewServer()
 	pb.RegisterProcessServiceServer(grpcServer, daemonServer)

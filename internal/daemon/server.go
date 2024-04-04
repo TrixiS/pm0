@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -27,6 +26,8 @@ const LogFilePerm = 0666
 const LogsTailDefault uint64 = 32
 const LogsTailMax uint64 = 1000
 const LogsFollowInterval time.Duration = time.Second
+
+const FailRestartDelay time.Duration = time.Second * 5
 
 type DaemonServerOptions struct {
 	LogsDirpath string
@@ -58,21 +59,17 @@ func (s DaemonServer) openUnitLogFile(unitID UnitID) (*os.File, error) {
 }
 
 func (s DaemonServer) watchUnitProcess(unit *Unit) {
-	err := unit.Command.Wait()
-
+	unit.Command.Wait()
 	unit.LogFile.Close()
 
-	if err == nil {
+	unitStatus := unit.GetStatus()
+
+	if unitStatus == EXITED || unitStatus == STOPPED {
 		return
 	}
 
-	_, isExitErr := err.(*exec.ExitError)
-
-	if !isExitErr {
-		return
-	}
-
-	log.Printf("process %d exited: %v", unit.Model.ID, err)
+	time.Sleep(FailRestartDelay)
+	s.RestartUnit(unit.Model)
 }
 
 func (s *DaemonServer) RestartUnit(model UnitModel) (*Unit, error) {
@@ -87,6 +84,13 @@ func (s *DaemonServer) RestartUnit(model UnitModel) (*Unit, error) {
 	if err := command.Start(); err != nil {
 		return nil, err
 	}
+
+	model.RestartsCount += 1
+
+	db := s.Options.DBFactory()
+	db.Update(&model)
+	db.Commit()
+	db.Close()
 
 	unitCopy := &Unit{
 		Model:   model,
@@ -370,7 +374,6 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 }
 
 func (s *DaemonServer) Delete(request *pb.StopRequest, stream pb.ProcessService_DeleteServer) error {
-	fmt.Println("open delete")
 	db := s.Options.DBFactory()
 
 	var eg errgroup.Group

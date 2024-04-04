@@ -44,7 +44,7 @@ func List(ctx *command_context.CommandContext) error {
 			return err
 		}
 
-		t := table.New("ID", "Name", "PID", "Status", "Exit code").
+		t := table.New("ID", "Name", "PID", "Status", "Restarts count").
 			WithHeaderFormatter(TableHeaderColorFunc).
 			WithFirstColumnFormatter(TableIDColorFunc)
 
@@ -54,7 +54,7 @@ func List(ctx *command_context.CommandContext) error {
 				unit.Name,
 				formatNillablePointer(unit.Pid),
 				formatUnitStatus(daemon.UnitStatus(unit.Status)),
-				formatNillablePointer(unit.ExitCode),
+				unit.RestartsCount,
 			)
 		}
 
