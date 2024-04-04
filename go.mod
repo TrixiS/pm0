@@ -5,7 +5,6 @@ go 1.21.7
 require (
 	github.com/asdine/storm/v3 v3.2.1
 	github.com/fatih/color v1.16.0
-	github.com/matoous/go-nanoid/v2 v2.0.0
 	github.com/rodaine/table v1.1.1
 	github.com/urfave/cli/v2 v2.27.1
 	golang.org/x/sync v0.6.0

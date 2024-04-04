@@ -36,7 +36,7 @@ func Start(ctx *command_context.CommandContext) error {
 			return err
 		}
 
-		fmt.Printf("started process with id %s and PID %d\n", response.Id, response.Pid)
+		fmt.Printf("started unit with id %d and PID %d\n", response.Unit.Id, *response.Unit.Pid)
 		return nil
 	})
 }

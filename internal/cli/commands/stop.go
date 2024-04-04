@@ -1,13 +1,49 @@
 package commands
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/TrixiS/pm0/internal/cli/command_context"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
+
+func GetUnitIDsFromIdents(ctx context.Context, client pb.ProcessServiceClient, idents []string) ([]uint32, error) {
+	response, err := client.List(ctx, nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	unitIDs := make([]uint32, 0, len(idents))
+
+	for _, ident := range idents {
+		intIdent, err := strconv.Atoi(ident)
+		isIntIdent := true
+		var unitID uint32 = 0
+
+		if err == nil {
+			unitID = uint32(intIdent)
+		} else {
+			isIntIdent = false
+		}
+
+		for _, unit := range response.Units {
+			if unit.Name == ident || (isIntIdent && unit.Id == unitID) {
+				unitIDs = append(unitIDs, unit.Id)
+			}
+		}
+	}
+
+	if len(unitIDs) == 0 {
+		return unitIDs, fmt.Errorf("no units found for provided identifiers")
+	}
+
+	return unitIDs, nil
+}
 
 func Stop(ctx *command_context.CommandContext) error {
 	args := ctx.CLIContext.Args()
@@ -17,8 +53,14 @@ func Stop(ctx *command_context.CommandContext) error {
 	}
 
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
+		unitIDs, err := GetUnitIDsFromIdents(ctx.CLIContext.Context, client, args.Slice())
+
+		if err != nil {
+			return err
+		}
+
 		stream, err := client.Stop(ctx.CLIContext.Context, &pb.StopRequest{
-			Idents: args.Slice(),
+			UnitIds: unitIDs,
 		})
 
 		if err != nil {
@@ -39,11 +81,11 @@ func Stop(ctx *command_context.CommandContext) error {
 			}
 
 			if response.Error != nil {
-				fmt.Printf("failed to stop unit %s: %s\n", response.Ident, *response.Error)
+				fmt.Printf("failed to stop unit %d: %s\n", response.UnitId, *response.Error)
 				continue
 			}
 
-			fmt.Printf("stopped unit %s\n", response.Unit.Name)
+			fmt.Printf("stopped unit %s (%d)\n", response.Unit.Name, response.UnitId)
 		}
 	})
 }

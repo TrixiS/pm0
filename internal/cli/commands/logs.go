@@ -19,10 +19,16 @@ func Logs(ctx *command_context.CommandContext) error {
 	}
 
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
+		unitIDs, err := GetUnitIDsFromIdents(ctx.CLIContext.Context, client, []string{args.First()})
+
+		if err != nil {
+			return err
+		}
+
 		stream, err := client.Logs(
 			ctx.CLIContext.Context,
 			&pb.LogsRequest{
-				Ident:  args.First(),
+				UnitId: unitIDs[0],
 				Follow: ctx.CLIContext.Bool("follow"),
 				Lines:  ctx.CLIContext.Uint64("lines"),
 			},

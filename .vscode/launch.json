@@ -24,7 +24,7 @@
       "request": "launch",
       "mode": "debug",
       "program": "${workspaceFolder}/cmd/pm0/main.go",
-      "args": ["logs", "--lines=5", "test"]
+      "args": ["logs", "1"]
     }
   ]
 }

@@ -17,7 +17,13 @@ func Restart(ctx *command_context.CommandContext) error {
 	}
 
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		stream, err := client.Restart(ctx.CLIContext.Context, &pb.StopRequest{Idents: args.Slice()})
+		unitIDs, err := GetUnitIDsFromIdents(ctx.CLIContext.Context, client, args.Slice())
+
+		if err != nil {
+			return err
+		}
+
+		stream, err := client.Restart(ctx.CLIContext.Context, &pb.StopRequest{UnitIds: unitIDs})
 
 		if err != nil {
 			return err
@@ -37,7 +43,7 @@ func Restart(ctx *command_context.CommandContext) error {
 			}
 
 			if response.Error != nil {
-				fmt.Printf("failed to restart unit %s: %s\n", response.Ident, *response.Error)
+				fmt.Printf("failed to restart unit %d: %s\n", response.UnitId, *response.Error)
 				continue
 			}
 

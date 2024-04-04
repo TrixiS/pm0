@@ -1,7 +1,9 @@
 package daemon
 
+type UnitID uint32
+
 type UnitModel struct {
-	ID   string `storm:"id"`
+	ID   UnitID `storm:"id,increment"`
 	Name string
 	CWD  string
 	Bin  string

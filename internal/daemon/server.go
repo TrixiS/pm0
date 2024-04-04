@@ -15,7 +15,6 @@ import (
 
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 	"github.com/asdine/storm/v3"
-	gonanoid "github.com/matoous/go-nanoid/v2"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -25,9 +24,8 @@ import (
 const LogFileFlag = os.O_CREATE | os.O_RDWR | os.O_APPEND
 const LogFilePerm = 0666
 
-const LogsTailDefault int = 32
-
-// TODO: use int unit ids (string ids are inconvenient)
+const LogsTailDefault uint64 = 32
+const LogsTailMax uint64 = 1000
 
 type DaemonServerOptions struct {
 	LogsDirpath string
@@ -39,21 +37,21 @@ type DaemonServer struct {
 
 	Options DaemonServerOptions
 
-	units map[string]*Unit
+	units map[UnitID]*Unit
 }
 
 func NewDaemonServer(options DaemonServerOptions) *DaemonServer {
 	return &DaemonServer{
 		Options: options,
-		units:   make(map[string]*Unit),
+		units:   make(map[UnitID]*Unit),
 	}
 }
 
-func (s DaemonServer) getUnitLogFilepath(unitID string) string {
-	return path.Join(s.Options.LogsDirpath, fmt.Sprintf("%s.log", unitID))
+func (s DaemonServer) getUnitLogFilepath(unitID UnitID) string {
+	return path.Join(s.Options.LogsDirpath, fmt.Sprintf("%d.log", unitID))
 }
 
-func (s DaemonServer) openUnitLogFile(unitID string) (*os.File, error) {
+func (s DaemonServer) openUnitLogFile(unitID UnitID) (*os.File, error) {
 	logFilepath := s.getUnitLogFilepath(unitID)
 	return os.OpenFile(logFilepath, LogFileFlag, LogFilePerm)
 }
@@ -73,58 +71,45 @@ func (s DaemonServer) watchUnitProcess(unit *Unit) {
 		return
 	}
 
-	log.Printf("process %s exited: %v", unit.Model.ID, err)
-}
-
-func (s DaemonServer) getUnitByIdent(ident string) *Unit {
-	unit := s.units[ident]
-
-	if unit != nil {
-		return unit
-	}
-
-	for _, unit := range s.units {
-		if unit.Model.Name == ident {
-			return unit
-		}
-	}
-
-	return nil
+	log.Printf("process %d exited: %v", unit.Model.ID, err)
 }
 
 func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb.StartResponse, error) {
-	unitID, err := gonanoid.New()
+	db := s.Options.DBFactory()
+	defer db.Close()
+
+	tx, err := db.Begin(true)
 
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	logFile, err := s.openUnitLogFile(unitID)
-
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	command := createUnitStartCommand(request.Bin, request.Args, request.Cwd, logFile)
-	err = command.Start()
-
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
+	defer tx.Rollback()
 
 	unitModel := UnitModel{
-		ID:   unitID,
 		Name: request.Name,
 		Bin:  request.Bin,
 		CWD:  request.Cwd,
 		Args: request.Args,
 	}
 
-	db := s.Options.DBFactory()
-	err = db.Save(&unitModel)
-	db.Close()
+	if err := tx.Save(&unitModel); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	logFile, err := s.openUnitLogFile(unitModel.ID)
 
 	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	command := createUnitStartCommand(request.Bin, request.Args, request.Cwd, logFile)
+
+	if err = command.Start(); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err := tx.Commit(); err != nil {
 		stopProcess(command.Process)
 		command.Process.Release()
 		return nil, status.Error(codes.Internal, err.Error())
@@ -141,8 +126,7 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 	go s.watchUnitProcess(unit)
 
 	response := pb.StartResponse{
-		Id:  unitModel.ID,
-		Pid: int32(command.Process.Pid),
+		Unit: createUnitPB(unit),
 	}
 
 	return &response, nil
@@ -167,15 +151,15 @@ func (s *DaemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResponse, 
 func (s *DaemonServer) Stop(request *pb.StopRequest, stream pb.ProcessService_StopServer) error {
 	eg, _ := errgroup.WithContext(context.Background())
 
-	for _, ident := range request.Idents {
-		i := ident
+	for _, unitID := range request.UnitIds {
+		id := UnitID(unitID)
 
 		eg.Go(func() error {
-			unit := s.getUnitByIdent(i)
-			response := &pb.StopResponse{Ident: i}
+			unit := s.units[id]
+			response := &pb.StopResponse{UnitId: uint32(id)}
 
 			if unit == nil {
-				e := fmt.Sprintf("unit %s not found", i)
+				e := fmt.Sprintf("unit %d not found", id)
 				response.Error = &e
 				return stream.Send(response)
 			}
@@ -207,15 +191,15 @@ func (s *DaemonServer) Stop(request *pb.StopRequest, stream pb.ProcessService_St
 func (s *DaemonServer) Restart(request *pb.StopRequest, stream pb.ProcessService_RestartServer) error {
 	eg, _ := errgroup.WithContext(context.Background())
 
-	for _, ident := range request.Idents {
-		i := ident
+	for _, unitID := range request.UnitIds {
+		id := UnitID(unitID)
 
 		eg.Go(func() error {
-			unit := s.getUnitByIdent(i)
-			response := &pb.StopResponse{Ident: i}
+			unit := s.units[id]
+			response := &pb.StopResponse{UnitId: uint32(id)}
 
 			if unit == nil {
-				e := fmt.Sprintf("unit %s not found", i)
+				e := fmt.Sprintf("unit %d not found", id)
 				response.Error = &e
 				return stream.Send(response)
 			}
@@ -275,7 +259,7 @@ func (s *DaemonServer) Restart(request *pb.StopRequest, stream pb.ProcessService
 }
 
 func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_LogsServer) error {
-	unit := s.getUnitByIdent(request.Ident)
+	unit := s.units[UnitID(request.UnitId)]
 
 	if unit == nil {
 		return status.Error(codes.NotFound, "requested unit not found")
@@ -296,12 +280,12 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	var tailAmount int
+	var tailAmount uint64
 
 	if request.Lines == 0 {
 		tailAmount = LogsTailDefault
 	} else {
-		tailAmount = int(request.Lines)
+		tailAmount = min(request.Lines, LogsTailMax)
 	}
 
 	const NEWLINE byte = 10
@@ -310,9 +294,7 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 	lines := make([]string, 0, tailAmount)
 	var lineBuf []byte = nil
 
-	fileSize := stat.Size()
-	tailBreakPoint := -fileSize
-
+	tailBreakPoint := -stat.Size()
 	var tailCursor int64 = 0
 
 	for {
@@ -348,7 +330,7 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 			lines = append(lines, string(lineBuf))
 		}
 
-		if len(lines) >= tailAmount || hitBreakpoint {
+		if uint64(len(lines)) >= tailAmount || hitBreakpoint {
 			break
 		}
 
@@ -358,8 +340,7 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 	slices.Reverse(lines)
 
 	err = stream.Send(&pb.LogsResponse{
-		UnitName: unit.Model.Name,
-		Lines:    lines,
+		Lines: lines,
 	})
 
 	if err != nil || !request.Follow {
@@ -379,20 +360,16 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 		var lines []string = nil
 
 		for scanner.Scan() {
-			line := scanner.Text()
-			lines = append(lines, line)
+			lines = append(lines, scanner.Text())
 		}
 
 		if len(lines) == 0 {
 			continue
 		}
 
-		err = stream.Send(
-			&pb.LogsResponse{
-				UnitName: unit.Model.Name,
-				Lines:    lines,
-			},
-		)
+		err = stream.Send(&pb.LogsResponse{
+			Lines: lines,
+		})
 
 		if err != nil {
 			return err
@@ -419,7 +396,7 @@ func createUnitPB(unit *Unit) *pb.Unit {
 	}
 
 	return &pb.Unit{
-		Id:       unit.Model.ID,
+		Id:       uint32(unit.Model.ID),
 		Name:     unit.Model.Name,
 		Pid:      pid,
 		Status:   uint32(unitStatus),

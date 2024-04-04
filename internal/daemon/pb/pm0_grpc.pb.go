@@ -25,6 +25,7 @@ const (
 	ProcessService_Stop_FullMethodName    = "/pm0.ProcessService/Stop"
 	ProcessService_Restart_FullMethodName = "/pm0.ProcessService/Restart"
 	ProcessService_Logs_FullMethodName    = "/pm0.ProcessService/Logs"
+	ProcessService_Delete_FullMethodName  = "/pm0.ProcessService/Delete"
 )
 
 // ProcessServiceClient is the client API for ProcessService service.
@@ -36,6 +37,7 @@ type ProcessServiceClient interface {
 	Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (ProcessService_StopClient, error)
 	Restart(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (ProcessService_RestartClient, error)
 	Logs(ctx context.Context, in *LogsRequest, opts ...grpc.CallOption) (ProcessService_LogsClient, error)
+	Delete(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (ProcessService_DeleteClient, error)
 }
 
 type processServiceClient struct {
@@ -160,6 +162,38 @@ func (x *processServiceLogsClient) Recv() (*LogsResponse, error) {
 	return m, nil
 }
 
+func (c *processServiceClient) Delete(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (ProcessService_DeleteClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ProcessService_ServiceDesc.Streams[3], ProcessService_Delete_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &processServiceDeleteClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type ProcessService_DeleteClient interface {
+	Recv() (*StartResponse, error)
+	grpc.ClientStream
+}
+
+type processServiceDeleteClient struct {
+	grpc.ClientStream
+}
+
+func (x *processServiceDeleteClient) Recv() (*StartResponse, error) {
+	m := new(StartResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // ProcessServiceServer is the server API for ProcessService service.
 // All implementations must embed UnimplementedProcessServiceServer
 // for forward compatibility
@@ -169,6 +203,7 @@ type ProcessServiceServer interface {
 	Stop(*StopRequest, ProcessService_StopServer) error
 	Restart(*StopRequest, ProcessService_RestartServer) error
 	Logs(*LogsRequest, ProcessService_LogsServer) error
+	Delete(*StopRequest, ProcessService_DeleteServer) error
 	mustEmbedUnimplementedProcessServiceServer()
 }
 
@@ -190,6 +225,9 @@ func (UnimplementedProcessServiceServer) Restart(*StopRequest, ProcessService_Re
 }
 func (UnimplementedProcessServiceServer) Logs(*LogsRequest, ProcessService_LogsServer) error {
 	return status.Errorf(codes.Unimplemented, "method Logs not implemented")
+}
+func (UnimplementedProcessServiceServer) Delete(*StopRequest, ProcessService_DeleteServer) error {
+	return status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
 func (UnimplementedProcessServiceServer) mustEmbedUnimplementedProcessServiceServer() {}
 
@@ -303,6 +341,27 @@ func (x *processServiceLogsServer) Send(m *LogsResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _ProcessService_Delete_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(StopRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ProcessServiceServer).Delete(m, &processServiceDeleteServer{stream})
+}
+
+type ProcessService_DeleteServer interface {
+	Send(*StartResponse) error
+	grpc.ServerStream
+}
+
+type processServiceDeleteServer struct {
+	grpc.ServerStream
+}
+
+func (x *processServiceDeleteServer) Send(m *StartResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // ProcessService_ServiceDesc is the grpc.ServiceDesc for ProcessService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -333,6 +392,11 @@ var ProcessService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Logs",
 			Handler:       _ProcessService_Logs_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "Delete",
+			Handler:       _ProcessService_Delete_Handler,
 			ServerStreams: true,
 		},
 	},
