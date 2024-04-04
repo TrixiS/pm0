@@ -26,6 +26,7 @@ const LogFilePerm = 0666
 
 const LogsTailDefault uint64 = 32
 const LogsTailMax uint64 = 1000
+const LogsFollowInterval time.Duration = time.Second
 
 type DaemonServerOptions struct {
 	LogsDirpath string
@@ -351,7 +352,7 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 	}
 
 	for {
-		time.Sleep(time.Second)
+		time.Sleep(LogsFollowInterval)
 		scanner := bufio.NewScanner(logFile)
 
 		var lines []string = nil
