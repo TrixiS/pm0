@@ -55,6 +55,7 @@ func main() {
 	}
 
 	app := &cli.App{
+		Description: "Command line interface for pm0 daemon",
 		Commands: []*cli.Command{
 			{
 				Name: "start",
