@@ -3,10 +3,10 @@ package commands
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"strconv"
 
+	pm0 "github.com/TrixiS/pm0/internal/cli"
 	"github.com/TrixiS/pm0/internal/cli/command_context"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
@@ -39,7 +39,7 @@ func GetUnitIDsFromIdents(ctx context.Context, client pb.ProcessServiceClient, i
 	}
 
 	if len(unitIDs) == 0 {
-		return unitIDs, fmt.Errorf("no units found for provided identifiers")
+		return unitIDs, errors.New("no units found for provided identifiers")
 	}
 
 	return unitIDs, nil
@@ -79,11 +79,11 @@ func Stop(ctx *command_context.CommandContext) error {
 			}
 
 			if response.Error == "" {
-				fmt.Printf("stopped unit %s (%d)\n", response.Unit.Name, response.UnitId)
+				pm0.Printf("stopped unit %s (%d)", response.Unit.Name, response.UnitId)
 				continue
 			}
 
-			fmt.Printf("failed to stop unit %d: %s\n", response.UnitId, response.Error)
+			pm0.Printf("failed to stop unit %d: %s", response.UnitId, response.Error)
 		}
 	})
 }

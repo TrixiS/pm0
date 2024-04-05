@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	pm0 "github.com/TrixiS/pm0/internal/cli"
 	"github.com/TrixiS/pm0/internal/cli/command_context"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
@@ -36,7 +37,7 @@ func Start(ctx *command_context.CommandContext) error {
 			return err
 		}
 
-		fmt.Printf("started unit with id %d and PID %d\n", response.Unit.Id, *response.Unit.Pid)
+		pm0.Printf("started unit with id %d and PID %d", response.Unit.Id, *response.Unit.Pid)
 		return nil
 	})
 }

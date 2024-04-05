@@ -2,9 +2,9 @@ package commands
 
 import (
 	"errors"
-	"fmt"
 	"io"
 
+	pm0 "github.com/TrixiS/pm0/internal/cli"
 	"github.com/TrixiS/pm0/internal/cli/command_context"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
@@ -41,8 +41,8 @@ func Restart(ctx *command_context.CommandContext) error {
 			}
 
 			if response.Error == "" {
-				fmt.Printf(
-					"restarted unit %s (%d) with PID %d\n",
+				pm0.Printf(
+					"restarted unit %s (%d) with PID %d",
 					response.Unit.Name,
 					response.Unit.Id,
 					*response.Unit.Pid,
@@ -51,7 +51,7 @@ func Restart(ctx *command_context.CommandContext) error {
 				continue
 			}
 
-			fmt.Printf("failed to restart unit %d: %s\n", response.UnitId, response.Error)
+			pm0.Printf("failed to restart unit %d: %s", response.UnitId, response.Error)
 		}
 	})
 }

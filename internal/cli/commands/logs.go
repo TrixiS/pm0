@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 
+	pm0 "github.com/TrixiS/pm0/internal/cli"
 	"github.com/TrixiS/pm0/internal/cli/command_context"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
@@ -14,7 +15,7 @@ func Logs(ctx *command_context.CommandContext) error {
 	args := ctx.CLIContext.Args()
 
 	if args.Len() == 0 {
-		fmt.Println("provide a unit identifier (id or name)")
+		pm0.Printf("provide a unit identifier (id or name)")
 		return nil
 	}
 

@@ -4,15 +4,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/TrixiS/pm0/internal/cli"
 	"github.com/TrixiS/pm0/internal/cli/command_context"
 	"github.com/TrixiS/pm0/internal/daemon"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
-	"github.com/fatih/color"
 	"github.com/rodaine/table"
 )
-
-var TableHeaderColorFunc = color.New(color.FgBlue, color.Underline).SprintfFunc()
-var TableIDColorFunc = color.New(color.FgBlue, color.Bold).SprintfFunc()
 
 func formatUnitStatus(status daemon.UnitStatus) string {
 	switch status {
@@ -57,8 +54,8 @@ func List(ctx *command_context.CommandContext) error {
 		}
 
 		t := table.New("ID", "Name", "PID", "Status", "Restarts", "Uptime").
-			WithHeaderFormatter(TableHeaderColorFunc).
-			WithFirstColumnFormatter(TableIDColorFunc)
+			WithHeaderFormatter(cli.TableHeaderColorFunc).
+			WithFirstColumnFormatter(cli.MainColorFunc)
 
 		for _, unit := range response.Units {
 			status := daemon.UnitStatus(unit.Status)

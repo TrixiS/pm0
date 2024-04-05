@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path"
 
+	pm0 "github.com/TrixiS/pm0/internal/cli"
 	"github.com/TrixiS/pm0/internal/cli/command_context"
 	"github.com/TrixiS/pm0/internal/cli/commands"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
@@ -115,6 +115,6 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		fmt.Println(err)
+		pm0.Printf(err.Error())
 	}
 }
