@@ -60,5 +60,4 @@ service ProcessService {
     rpc Restart(StopRequest) returns (stream StopResponse);
     rpc Logs(LogsRequest) returns (stream LogsResponse);
     rpc Delete(StopRequest) returns (stream StopResponse); 
-    // TODO: stop unit (a func to do that? so we can use it in stop, restart and delete), delete log files and db entry
 }

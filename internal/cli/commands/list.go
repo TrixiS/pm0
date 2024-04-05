@@ -56,7 +56,7 @@ func List(ctx *command_context.CommandContext) error {
 			return err
 		}
 
-		t := table.New("ID", "Name", "PID", "Status", "Restarts count", "Uptime").
+		t := table.New("ID", "Name", "PID", "Status", "Restarts", "Uptime").
 			WithHeaderFormatter(TableHeaderColorFunc).
 			WithFirstColumnFormatter(TableIDColorFunc)
 
