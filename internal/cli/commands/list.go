@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/TrixiS/pm0/internal/cli/command_context"
 	"github.com/TrixiS/pm0/internal/daemon"
@@ -36,6 +37,17 @@ func formatNillablePointer[T any](ptr *T) string {
 	return fmt.Sprintf("%v", *ptr)
 }
 
+func getUnitUptime(startedAt int64, status daemon.UnitStatus) string {
+	if status != daemon.RUNNING {
+		return "None"
+	}
+
+	startedAtTime := time.Unix(startedAt, 0)
+	now := time.Now()
+	diff := now.Sub(startedAtTime)
+	return diff.Round(time.Second).String()
+}
+
 func List(ctx *command_context.CommandContext) error {
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
 		response, err := client.List(ctx.CLIContext.Context, nil)
@@ -44,17 +56,20 @@ func List(ctx *command_context.CommandContext) error {
 			return err
 		}
 
-		t := table.New("ID", "Name", "PID", "Status", "Restarts count").
+		t := table.New("ID", "Name", "PID", "Status", "Restarts count", "Uptime").
 			WithHeaderFormatter(TableHeaderColorFunc).
 			WithFirstColumnFormatter(TableIDColorFunc)
 
 		for _, unit := range response.Units {
+			status := daemon.UnitStatus(unit.Status)
+
 			t.AddRow(
 				unit.Id,
 				unit.Name,
 				formatNillablePointer(unit.Pid),
-				formatUnitStatus(daemon.UnitStatus(unit.Status)),
+				formatUnitStatus(status),
 				unit.RestartsCount,
+				getUnitUptime(unit.StartedAt, status),
 			)
 		}
 

@@ -3,6 +3,7 @@ package daemon
 import (
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
@@ -17,9 +18,10 @@ const (
 )
 
 type Unit struct {
-	Model   UnitModel
-	Command *exec.Cmd
-	LogFile *os.File
+	Model     UnitModel
+	Command   *exec.Cmd
+	LogFile   *os.File
+	StartedAt time.Time
 }
 
 func (u Unit) GetStatus() UnitStatus {
@@ -53,5 +55,6 @@ func (u Unit) ToPB() *pb.Unit {
 		Pid:           pid,
 		Status:        uint32(unitStatus),
 		RestartsCount: u.Model.RestartsCount,
+		StartedAt:     u.StartedAt.Unix(),
 	}
 }

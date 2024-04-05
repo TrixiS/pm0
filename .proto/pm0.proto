@@ -13,6 +13,7 @@ message Unit {
     optional int32 pid = 3;
     uint32 status = 4;
     uint32 restarts_count = 5;
+    int64 started_at = 6;
     // TODO: add uptime 
     // TODO: add cpu/memory
 }

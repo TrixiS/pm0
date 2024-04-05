@@ -93,9 +93,10 @@ func (s *DaemonServer) RestartUnit(model UnitModel) (*Unit, error) {
 	db.Close()
 
 	unitCopy := &Unit{
-		Model:   model,
-		Command: command,
-		LogFile: logFile,
+		Model:     model,
+		Command:   command,
+		LogFile:   logFile,
+		StartedAt: time.Now(),
 	}
 
 	s.units[unitCopy.Model.ID] = unitCopy
@@ -146,13 +147,13 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 	}
 
 	unit := &Unit{
-		Model:   unitModel,
-		Command: command,
-		LogFile: logFile,
+		Model:     unitModel,
+		Command:   command,
+		LogFile:   logFile,
+		StartedAt: time.Now(),
 	}
 
 	s.units[unitModel.ID] = unit
-
 	go s.watchUnitProcess(unit)
 
 	response := pb.StartResponse{
@@ -247,10 +248,6 @@ func (s *DaemonServer) Restart(request *pb.StopRequest, stream pb.ProcessService
 				response.Unit = unit.ToPB()
 				return stream.Send(response)
 			}
-
-			s.units[unitCopy.Model.ID] = unitCopy
-
-			go s.watchUnitProcess(unitCopy)
 
 			response.Unit = unitCopy.ToPB()
 			return stream.Send(response)
