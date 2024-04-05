@@ -2,9 +2,9 @@ package commands
 
 import (
 	"errors"
-	"fmt"
 	"io"
 
+	pm0 "github.com/TrixiS/pm0/internal/cli"
 	"github.com/TrixiS/pm0/internal/cli/command_context"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
@@ -41,11 +41,11 @@ func Delete(ctx *command_context.CommandContext) error {
 			}
 
 			if response.Error == "" {
-				fmt.Printf("deleted unit %s (%d)\n", response.Unit.Name, response.Unit.Id)
+				pm0.Printf("deleted unit %s (%d)", response.Unit.Name, response.Unit.Id)
 				continue
 			}
 
-			fmt.Printf("failed to delete unit %d: %s\n", response.UnitId, response.Error)
+			pm0.Printf("failed to delete unit %d: %s", response.UnitId, response.Error)
 		}
 	})
 }
