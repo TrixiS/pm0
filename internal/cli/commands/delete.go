@@ -17,7 +17,7 @@ func Delete(ctx *command_context.CommandContext) error {
 	}
 
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		unitIDs, err := GetUnitIDsFromIdents(ctx.CLIContext.Context, client, args.Slice())
+		unitIDs, err := GetUnitIDsFromIdents(ctx.CLIContext.Context, client, args.Slice(), false)
 
 		if err != nil {
 			return err

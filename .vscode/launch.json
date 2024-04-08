@@ -5,26 +5,11 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch file",
-      "type": "go",
-      "request": "launch",
-      "mode": "debug",
-      "program": "${file}"
-    },
-    {
       "name": "Debug daemon",
       "type": "go",
       "request": "launch",
       "mode": "debug",
       "program": "${workspaceFolder}/cmd/pm0_daemon/main.go"
-    },
-    {
-      "name": "Debug client",
-      "type": "go",
-      "request": "launch",
-      "mode": "debug",
-      "program": "${workspaceFolder}/cmd/pm0/main.go",
-      "args": ["logs", "1"]
     }
   ]
 }

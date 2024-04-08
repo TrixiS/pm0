@@ -17,7 +17,7 @@ func Restart(ctx *command_context.CommandContext) error {
 	}
 
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		unitIDs, err := GetUnitIDsFromIdents(ctx.CLIContext.Context, client, args.Slice())
+		unitIDs, err := GetUnitIDsFromIdents(ctx.CLIContext.Context, client, args.Slice(), true)
 
 		if err != nil {
 			return err

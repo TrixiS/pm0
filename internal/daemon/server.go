@@ -58,13 +58,13 @@ func (s DaemonServer) openUnitLogFile(unitID UnitID) (*os.File, error) {
 	return os.OpenFile(logFilepath, LogFileFlag, LogFilePerm)
 }
 
-func (s DaemonServer) watchUnitProcess(unit *Unit) {
+func (s *DaemonServer) watchUnitProcess(unit *Unit) {
 	unit.Command.Wait()
 	unit.LogFile.Close()
 
 	unitStatus := unit.GetStatus()
 
-	if unitStatus == EXITED || unitStatus == STOPPED {
+	if unitStatus != FAILED {
 		return
 	}
 

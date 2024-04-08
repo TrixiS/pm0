@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/TrixiS/pm0/internal/cli"
+	pm0 "github.com/TrixiS/pm0/internal/cli"
 	"github.com/TrixiS/pm0/internal/cli/command_context"
 	"github.com/TrixiS/pm0/internal/daemon"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
@@ -54,8 +54,8 @@ func List(ctx *command_context.CommandContext) error {
 		}
 
 		t := table.New("ID", "Name", "PID", "Status", "Restarts", "Uptime").
-			WithHeaderFormatter(cli.TableHeaderColorFunc).
-			WithFirstColumnFormatter(cli.MainColorFunc)
+			WithHeaderFormatter(pm0.TableHeaderColorFunc).
+			WithFirstColumnFormatter(pm0.MainColorFunc)
 
 		for _, unit := range response.Units {
 			status := daemon.UnitStatus(unit.Status)
