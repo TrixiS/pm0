@@ -69,7 +69,7 @@ func Stop(ctx *command_context.CommandContext) error {
 	args := ctx.CLIContext.Args()
 
 	if args.Len() == 0 {
-		return errors.New("provide at least one unit identifier (id or name)")
+		return ErrNoIdent
 	}
 
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {

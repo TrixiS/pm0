@@ -3,12 +3,11 @@ package cli
 import (
 	"fmt"
 
-	"github.com/fatih/color"
+	"github.com/jedib0t/go-pretty/v6/text"
 )
 
-var MainColorFunc = color.New(color.FgBlue, color.Bold).SprintfFunc()
-var TableHeaderColorFunc = color.New(color.FgBlue, color.Underline).SprintfFunc()
+var pm0OutputPrefix = text.FgHiCyan.Sprint("[PM0] ")
 
 func Printf(format string, args ...interface{}) {
-	fmt.Printf(MainColorFunc("[PM0] ")+format+"\n", args...)
+	fmt.Printf(pm0OutputPrefix+format+"\n", args...)
 }

@@ -2,33 +2,26 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"time"
 
-	pm0 "github.com/TrixiS/pm0/internal/cli"
 	"github.com/TrixiS/pm0/internal/cli/command_context"
 	"github.com/TrixiS/pm0/internal/daemon"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
-	"github.com/rodaine/table"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 )
 
-func formatUnitStatus(status daemon.UnitStatus) string {
-	switch status {
-	case daemon.RUNNING:
-		return "Running"
-	case daemon.EXITED:
-		return "Exited"
-	case daemon.FAILED:
-		return "Failed"
-	case daemon.STOPPED:
-		return "Stopped"
-	default:
-		return "Unknown"
-	}
-}
+var runningStatusString = text.FgGreen.Sprint("Running")
+var exitedStatusString = text.FgWhite.Sprint("Exited")
+var failedStatusString = text.FgRed.Sprint("Failed")
+var stoppedStatusString = text.FgYellow.Sprint("Stopped")
+
+const tableNoneString = "None"
 
 func formatNillablePointer[T any](ptr *T) string {
 	if ptr == nil {
-		return "None"
+		return tableNoneString
 	}
 
 	return fmt.Sprintf("%v", *ptr)
@@ -36,7 +29,7 @@ func formatNillablePointer[T any](ptr *T) string {
 
 func getUnitUptime(startedAt int64, status daemon.UnitStatus) string {
 	if status != daemon.RUNNING {
-		return "None"
+		return tableNoneString
 	}
 
 	startedAtTime := time.Unix(startedAt, 0)
@@ -53,24 +46,48 @@ func List(ctx *command_context.CommandContext) error {
 			return err
 		}
 
-		t := table.New("ID", "Name", "PID", "Status", "Restarts", "Uptime").
-			WithHeaderFormatter(pm0.TableHeaderColorFunc).
-			WithFirstColumnFormatter(pm0.MainColorFunc)
+		t := table.NewWriter()
+		t.SetOutputMirror(os.Stdout)
+		t.AppendHeader(table.Row{"ID", "Name", "PID", "Status", "Restarts", "Uptime"})
+		t.SetStyle(table.StyleBold)
+		t.SetColumnConfigs([]table.ColumnConfig{
+			{
+				Name:   "ID",
+				Colors: text.Colors{text.Bold, text.FgHiCyan},
+			},
+			{
+				Name: "Status",
+				Transformer: func(val interface{}) string {
+					switch val {
+					case daemon.RUNNING:
+						return runningStatusString
+					case daemon.EXITED:
+						return exitedStatusString
+					case daemon.FAILED:
+						return failedStatusString
+					case daemon.STOPPED:
+						return stoppedStatusString
+					default:
+						return "Unknown"
+					}
+				},
+			},
+		})
 
 		for _, unit := range response.Units {
-			status := daemon.UnitStatus(unit.Status)
+			unitStatus := daemon.UnitStatus(unit.Status)
 
-			t.AddRow(
+			t.AppendRow(table.Row{
 				unit.Id,
 				unit.Name,
 				formatNillablePointer(unit.Pid),
-				formatUnitStatus(status),
+				unitStatus,
 				unit.RestartsCount,
-				getUnitUptime(unit.StartedAt, status),
-			)
+				getUnitUptime(unit.StartedAt, unitStatus),
+			})
 		}
 
-		t.Print()
+		t.Render()
 		return nil
 	})
 }
