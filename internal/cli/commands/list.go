@@ -50,6 +50,7 @@ func List(ctx *command_context.CommandContext) error {
 		t.SetOutputMirror(os.Stdout)
 		t.AppendHeader(table.Row{"ID", "Name", "PID", "Status", "Restarts", "Uptime"})
 		t.SetStyle(table.StyleLight)
+		t.Style().Options.SeparateRows = false
 		t.SetColumnConfigs([]table.ColumnConfig{
 			{
 				Name:   "ID",
