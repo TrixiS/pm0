@@ -17,8 +17,8 @@ import (
 )
 
 // TODO: pm0 logs clear <ident> - to clear the logs file
-// TODO: pm0 info <ident> - to get start info about unit (bin, args, cwd, log filepath?)
-// TODO: support "all" as identifier for some commands (stop, restart, logs clear)
+// TODO: resolve ident on server (so client does not need to fetch it twice)
+// TODO?: preserve stopped units
 
 const CLIClientDBFilename = "pm0_cli.db"
 

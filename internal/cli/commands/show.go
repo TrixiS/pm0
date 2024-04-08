@@ -31,15 +31,14 @@ func Show(ctx *command_context.CommandContext) error {
 
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
-		t.AppendHeader(table.Row{"Field", "Value"})
 		t.SetStyle(table.StyleLight)
 		t.SetColumnConfigs([]table.ColumnConfig{
 			{
-				Name:   "Field",
+				Number: 1,
 				Colors: text.Colors{text.Bold, text.FgHiCyan},
 			},
 			{
-				Name:   "Value",
+				Number: 2,
 				Colors: text.Colors{text.FgHiWhite},
 			},
 		})

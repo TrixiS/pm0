@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	pm0 "github.com/TrixiS/pm0/internal/cli"
 	"github.com/TrixiS/pm0/internal/cli/command_context"
 	"github.com/TrixiS/pm0/internal/daemon"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
@@ -44,6 +45,11 @@ func List(ctx *command_context.CommandContext) error {
 
 		if err != nil {
 			return err
+		}
+
+		if len(response.Units) == 0 {
+			pm0.Printf("no units")
+			return nil
 		}
 
 		t := table.NewWriter()
