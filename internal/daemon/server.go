@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path"
 	"slices"
+	"strings"
 	"syscall"
 	"time"
 
@@ -407,6 +408,23 @@ func (s *DaemonServer) Delete(request *pb.StopRequest, stream pb.ProcessService_
 	db.Close()
 
 	return err
+}
+
+func (s *DaemonServer) Show(ctx context.Context, request *pb.ShowRequest) (*pb.ShowResponse, error) {
+	unit := s.units[UnitID(request.UnitId)]
+
+	if unit == nil {
+		return nil, status.Errorf(codes.NotFound, "unit %d not found", request.UnitId)
+	}
+
+	response := pb.ShowResponse{
+		Id:      uint32(unit.Model.ID),
+		Name:    unit.Model.Name,
+		Cwd:     unit.Model.CWD,
+		Command: strings.Join(unit.Command.Args, " "),
+	}
+
+	return &response, nil
 }
 
 func stopProcess(process *os.Process) error {

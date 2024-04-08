@@ -14,7 +14,6 @@ message Unit {
     uint32 status = 4;
     uint32 restarts_count = 5;
     int64 started_at = 6;
-    // TODO: add uptime 
     // TODO: add cpu/memory
 }
 
@@ -53,6 +52,17 @@ message LogsResponse {
     repeated string lines = 1;
 }
 
+message ShowRequest {
+    uint32 unit_id = 1;
+}
+
+message ShowResponse {
+    uint32 id = 1;
+    string name = 2;
+    string cwd = 3;
+    string command = 4;
+}
+
 service ProcessService {
     rpc Start(StartRequest) returns (StartResponse);
     rpc List(google.protobuf.Empty) returns (ListResponse);
@@ -60,4 +70,5 @@ service ProcessService {
     rpc Restart(StopRequest) returns (stream StopResponse);
     rpc Logs(LogsRequest) returns (stream LogsResponse);
     rpc Delete(StopRequest) returns (stream StopResponse); 
+    rpc Show(ShowRequest) returns (ShowResponse);
 }

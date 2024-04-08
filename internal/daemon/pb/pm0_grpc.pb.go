@@ -26,6 +26,7 @@ const (
 	ProcessService_Restart_FullMethodName = "/pm0.ProcessService/Restart"
 	ProcessService_Logs_FullMethodName    = "/pm0.ProcessService/Logs"
 	ProcessService_Delete_FullMethodName  = "/pm0.ProcessService/Delete"
+	ProcessService_Show_FullMethodName    = "/pm0.ProcessService/Show"
 )
 
 // ProcessServiceClient is the client API for ProcessService service.
@@ -38,6 +39,7 @@ type ProcessServiceClient interface {
 	Restart(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (ProcessService_RestartClient, error)
 	Logs(ctx context.Context, in *LogsRequest, opts ...grpc.CallOption) (ProcessService_LogsClient, error)
 	Delete(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (ProcessService_DeleteClient, error)
+	Show(ctx context.Context, in *ShowRequest, opts ...grpc.CallOption) (*ShowResponse, error)
 }
 
 type processServiceClient struct {
@@ -194,6 +196,15 @@ func (x *processServiceDeleteClient) Recv() (*StopResponse, error) {
 	return m, nil
 }
 
+func (c *processServiceClient) Show(ctx context.Context, in *ShowRequest, opts ...grpc.CallOption) (*ShowResponse, error) {
+	out := new(ShowResponse)
+	err := c.cc.Invoke(ctx, ProcessService_Show_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ProcessServiceServer is the server API for ProcessService service.
 // All implementations must embed UnimplementedProcessServiceServer
 // for forward compatibility
@@ -204,6 +215,7 @@ type ProcessServiceServer interface {
 	Restart(*StopRequest, ProcessService_RestartServer) error
 	Logs(*LogsRequest, ProcessService_LogsServer) error
 	Delete(*StopRequest, ProcessService_DeleteServer) error
+	Show(context.Context, *ShowRequest) (*ShowResponse, error)
 	mustEmbedUnimplementedProcessServiceServer()
 }
 
@@ -228,6 +240,9 @@ func (UnimplementedProcessServiceServer) Logs(*LogsRequest, ProcessService_LogsS
 }
 func (UnimplementedProcessServiceServer) Delete(*StopRequest, ProcessService_DeleteServer) error {
 	return status.Errorf(codes.Unimplemented, "method Delete not implemented")
+}
+func (UnimplementedProcessServiceServer) Show(context.Context, *ShowRequest) (*ShowResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Show not implemented")
 }
 func (UnimplementedProcessServiceServer) mustEmbedUnimplementedProcessServiceServer() {}
 
@@ -362,6 +377,24 @@ func (x *processServiceDeleteServer) Send(m *StopResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _ProcessService_Show_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShowRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProcessServiceServer).Show(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProcessService_Show_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProcessServiceServer).Show(ctx, req.(*ShowRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ProcessService_ServiceDesc is the grpc.ServiceDesc for ProcessService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -376,6 +409,10 @@ var ProcessService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "List",
 			Handler:    _ProcessService_List_Handler,
+		},
+		{
+			MethodName: "Show",
+			Handler:    _ProcessService_Show_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

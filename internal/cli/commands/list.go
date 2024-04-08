@@ -49,7 +49,7 @@ func List(ctx *command_context.CommandContext) error {
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
 		t.AppendHeader(table.Row{"ID", "Name", "PID", "Status", "Restarts", "Uptime"})
-		t.SetStyle(table.StyleBold)
+		t.SetStyle(table.StyleLight)
 		t.SetColumnConfigs([]table.ColumnConfig{
 			{
 				Name:   "ID",

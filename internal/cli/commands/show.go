@@ -1,0 +1,56 @@
+package commands
+
+import (
+	"os"
+
+	"github.com/TrixiS/pm0/internal/cli/command_context"
+	"github.com/TrixiS/pm0/internal/daemon/pb"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
+)
+
+func Show(ctx *command_context.CommandContext) error {
+	args := ctx.CLIContext.Args()
+
+	if args.Len() == 0 {
+		return ErrNoIdent
+	}
+
+	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
+		unitIDs, err := GetUnitIDsFromIdents(ctx.CLIContext.Context, client, []string{args.First()}, false)
+
+		if err != nil {
+			return err
+		}
+
+		response, err := client.Show(ctx.CLIContext.Context, &pb.ShowRequest{UnitId: unitIDs[0]})
+
+		if err != nil {
+			return err
+		}
+
+		t := table.NewWriter()
+		t.SetOutputMirror(os.Stdout)
+		t.AppendHeader(table.Row{"Field", "Value"})
+		t.SetStyle(table.StyleLight)
+		t.SetColumnConfigs([]table.ColumnConfig{
+			{
+				Name:   "Field",
+				Colors: text.Colors{text.Bold, text.FgHiCyan},
+			},
+			{
+				Name:   "Value",
+				Colors: text.Colors{text.FgHiWhite},
+			},
+		})
+		t.AppendRows([]table.Row{
+			{"ID", response.Id},
+			{"Name", response.Name},
+			{"CWD", response.Cwd},
+			{"Command", response.Command},
+		})
+
+		t.Render()
+		return nil
+	})
+}

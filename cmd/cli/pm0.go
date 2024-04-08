@@ -116,6 +116,12 @@ func main() {
 				Args:   true,
 				Action: contextProvider.Wraps(commands.Delete),
 			},
+			{
+				Name:   "show",
+				Usage:  "show unit info",
+				Args:   true,
+				Action: contextProvider.Wraps(commands.Show),
+			},
 		},
 	}
 
