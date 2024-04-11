@@ -65,7 +65,7 @@ func (s *DaemonServer) watchUnitProcess(unit *Unit) {
 
 	unitStatus := unit.GetStatus()
 
-	if unitStatus != FAILED {
+	if unitStatus != FAILED || s.units[unit.Model.ID] == nil {
 		return
 	}
 
