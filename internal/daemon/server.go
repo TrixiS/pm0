@@ -73,6 +73,11 @@ func (s *DaemonServer) watchUnitProcess(unit *Unit) {
 	s.RestartUnit(unit.Model)
 }
 
+func (s *DaemonServer) addUnit(unit *Unit) {
+	s.units[unit.Model.ID] = unit
+	go s.watchUnitProcess(unit)
+}
+
 func (s *DaemonServer) RestartUnit(model UnitModel) (*Unit, error) {
 	logFile, err := s.openUnitLogFile(model.ID)
 
@@ -100,9 +105,7 @@ func (s *DaemonServer) RestartUnit(model UnitModel) (*Unit, error) {
 		StartedAt: time.Now(),
 	}
 
-	s.units[unitCopy.Model.ID] = unitCopy
-	go s.watchUnitProcess(unitCopy)
-
+	s.addUnit(unitCopy)
 	return unitCopy, nil
 }
 
@@ -147,15 +150,14 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	unit := &Unit{
+	unit := Unit{
 		Model:     unitModel,
 		Command:   command,
 		LogFile:   logFile,
 		StartedAt: time.Now(),
 	}
 
-	s.units[unitModel.ID] = unit
-	go s.watchUnitProcess(unit)
+	s.addUnit(&unit)
 
 	response := pb.StartResponse{
 		Unit: unit.ToPB(),

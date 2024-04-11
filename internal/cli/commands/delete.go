@@ -13,11 +13,11 @@ func Delete(ctx *command_context.CommandContext) error {
 	args := ctx.CLIContext.Args()
 
 	if args.Len() == 0 {
-		return ErrNoIdent
+		return pm0.ErrNoIdent
 	}
 
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		unitIDs, err := GetUnitIDsFromIdents(ctx.CLIContext.Context, client, args.Slice(), true)
+		unitIDs, err := pm0.GetUnitIDsFromIdents(ctx.CLIContext.Context, client, args.Slice(), true)
 
 		if err != nil {
 			return err

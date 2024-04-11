@@ -9,17 +9,15 @@ import (
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
 
-var ErrNoIdent = errors.New("provide at least one unit identifier (id or name)")
-
 func Restart(ctx *command_context.CommandContext) error {
 	args := ctx.CLIContext.Args()
 
 	if args.Len() == 0 {
-		return ErrNoIdent
+		return pm0.ErrNoIdent
 	}
 
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		unitIDs, err := GetUnitIDsFromIdents(ctx.CLIContext.Context, client, args.Slice(), true)
+		unitIDs, err := pm0.GetUnitIDsFromIdents(ctx.CLIContext.Context, client, args.Slice(), true)
 
 		if err != nil {
 			return err

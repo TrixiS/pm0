@@ -39,6 +39,21 @@ func getUnitUptime(startedAt int64, status daemon.UnitStatus) string {
 	return diff.Round(time.Second).String()
 }
 
+func formatUnitStatus(unitStatus daemon.UnitStatus) string {
+	switch unitStatus {
+	case daemon.RUNNING:
+		return runningStatusString
+	case daemon.EXITED:
+		return exitedStatusString
+	case daemon.FAILED:
+		return failedStatusString
+	case daemon.STOPPED:
+		return stoppedStatusString
+	default:
+		return "Unknown"
+	}
+}
+
 func List(ctx *command_context.CommandContext) error {
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
 		response, err := client.List(ctx.CLIContext.Context, nil)
@@ -62,23 +77,6 @@ func List(ctx *command_context.CommandContext) error {
 				Name:   "ID",
 				Colors: text.Colors{text.Bold, text.FgHiCyan},
 			},
-			{
-				Name: "Status",
-				Transformer: func(val interface{}) string {
-					switch val {
-					case daemon.RUNNING:
-						return runningStatusString
-					case daemon.EXITED:
-						return exitedStatusString
-					case daemon.FAILED:
-						return failedStatusString
-					case daemon.STOPPED:
-						return stoppedStatusString
-					default:
-						return "Unknown"
-					}
-				},
-			},
 		})
 
 		for _, unit := range response.Units {
@@ -88,7 +86,7 @@ func List(ctx *command_context.CommandContext) error {
 				unit.Id,
 				unit.Name,
 				formatNillablePointer(unit.Pid),
-				unitStatus,
+				formatUnitStatus(unitStatus),
 				unit.RestartsCount,
 				getUnitUptime(unit.StartedAt, unitStatus),
 			})
