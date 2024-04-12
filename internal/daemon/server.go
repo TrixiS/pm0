@@ -64,13 +64,13 @@ func (s *DaemonServer) watchUnitProcess(unit *Unit) {
 	unit.Command.Wait()
 	unit.LogFile.Close()
 
+	time.Sleep(FailRestartDelay)
 	unitStatus := unit.GetStatus()
 
 	if unitStatus != FAILED || s.units[unit.Model.ID] == nil {
 		return
 	}
 
-	time.Sleep(FailRestartDelay)
 	s.RestartUnit(unit.Model)
 }
 
