@@ -31,7 +31,7 @@ func FormatNillablePointer[T any](ptr *T) string {
 	return fmt.Sprintf("%v", *ptr)
 }
 
-func FormatUnitStartedAt(startedAt int64, status daemon.UnitStatus) string {
+func FormatUnitUptime(startedAt int64, status daemon.UnitStatus) string {
 	if status != daemon.RUNNING {
 		return tableNoneString
 	}

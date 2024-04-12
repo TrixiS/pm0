@@ -45,7 +45,7 @@ func List(ctx *command_context.CommandContext) error {
 				pm0.FormatNillablePointer(unit.Pid),
 				pm0.FormatUnitStatus(unitStatus),
 				unit.RestartsCount,
-				pm0.FormatUnitStartedAt(unit.StartedAt, unitStatus),
+				pm0.FormatUnitUptime(unit.StartedAt, unitStatus),
 			})
 		}
 
