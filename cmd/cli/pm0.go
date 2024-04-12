@@ -20,6 +20,7 @@ import (
 // TODO?: preserve stopped units
 
 const CLIClientDBFilename = "pm0_cli.db"
+const MaxRecvMessageSizeBytes = 8 * 8 * 1024 * 1024 // 8 MB
 
 func main() {
 	pm0Dirpath, err := utils.GetPM0Dirpath()
@@ -44,6 +45,7 @@ func main() {
 			conn, err := grpc.Dial(
 				"localhost:7777",
 				grpc.WithTransportCredentials(insecure.NewCredentials()),
+				grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(MaxRecvMessageSizeBytes)),
 			) // TODO: get host from somewhere (env/config)
 
 			if err != nil {

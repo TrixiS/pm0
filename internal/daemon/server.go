@@ -26,6 +26,7 @@ const LogFilePerm = 0666
 
 const LogsTailDefault uint64 = 32
 const LogsTailMax uint64 = 1000
+const LogsMaxBytes uint32 = 4 * 8 * 1024 * 1024 // 4 MB
 const LogsFollowInterval time.Duration = time.Second
 
 const FailRestartDelay time.Duration = time.Second * 5
@@ -294,10 +295,17 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 	const RETURN byte = 0xD
 
 	lines := make([]string, 0, tailAmount)
+
+	var lineBytesCount uint32 = 0
 	var lineBuf []byte = nil
 
 	tailBreakPoint := -stat.Size()
 	var tailCursor int64 = 0
+
+	appendLine := func() {
+		slices.Reverse(lineBuf)
+		lines = append(lines, string(lineBuf))
+	}
 
 	for {
 		tailCursor -= 1
@@ -319,6 +327,12 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 
 		if char != NEWLINE && char != RETURN {
 			lineBuf = append(lineBuf, char)
+			lineBytesCount += 1
+
+			if lineBytesCount >= LogsMaxBytes {
+				appendLine()
+				break
+			}
 
 			if tailCursor != tailBreakPoint {
 				continue
@@ -326,8 +340,7 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 		}
 
 		if len(lineBuf) > 0 {
-			slices.Reverse(lineBuf)
-			lines = append(lines, string(lineBuf))
+			appendLine()
 		}
 
 		if uint64(len(lines)) >= tailAmount || tailCursor == tailBreakPoint {
@@ -390,12 +403,12 @@ func (s *DaemonServer) Delete(request *pb.StopRequest, stream pb.ProcessService_
 				return stream.Send(response)
 			}
 
+			db.DeleteStruct(&unit.Model)
+			delete(s.units, unit.Model.ID)
+
 			if unit.GetStatus() == RUNNING {
 				stopProcess(unit.Command.Process)
 			}
-
-			db.DeleteStruct(&unit.Model)
-			delete(s.units, unit.Model.ID)
 
 			return stream.Send(&pb.StopResponse{
 				UnitId: uint32(id),
