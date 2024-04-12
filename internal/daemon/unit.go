@@ -3,6 +3,7 @@ package daemon
 import (
 	"os"
 	"os/exec"
+	"syscall"
 	"time"
 
 	"github.com/TrixiS/pm0/internal/daemon/pb"
@@ -33,9 +34,14 @@ type Unit struct {
 	Command   *exec.Cmd
 	LogFile   *os.File
 	StartedAt time.Time
+	IsStopped bool
 }
 
 func (u Unit) GetStatus() UnitStatus {
+	if u.IsStopped {
+		return STOPPED
+	}
+
 	if u.Command.ProcessState == nil {
 		return RUNNING
 	}
@@ -68,4 +74,13 @@ func (u Unit) ToPB() *pb.Unit {
 		RestartsCount: u.Model.RestartsCount,
 		StartedAt:     u.StartedAt.Unix(),
 	}
+}
+
+func (u *Unit) Stop() error {
+	u.IsStopped = true
+	return stopProcess(u.Command.Process)
+}
+
+func stopProcess(process *os.Process) error {
+	return process.Signal(syscall.SIGINT)
 }

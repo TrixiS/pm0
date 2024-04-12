@@ -10,7 +10,6 @@ import (
 	"path"
 	"slices"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/TrixiS/pm0/internal/daemon/pb"
@@ -65,9 +64,8 @@ func (s *DaemonServer) watchUnitProcess(unit *Unit) {
 	unit.LogFile.Close()
 
 	time.Sleep(FailRestartDelay)
-	unitStatus := unit.GetStatus()
 
-	if unitStatus != FAILED || s.units[unit.Model.ID] == nil {
+	if s.units[unit.Model.ID] == nil || unit.GetStatus() != FAILED {
 		return
 	}
 
@@ -204,9 +202,7 @@ func (s *DaemonServer) Stop(request *pb.StopRequest, stream pb.ProcessService_St
 				return stream.Send(response)
 			}
 
-			err := stopProcess(unit.Command.Process)
-
-			if err != nil {
+			if err := unit.Stop(); err != nil {
 				response.Error = err.Error()
 				response.Unit = unit.ToPB()
 				return stream.Send(response)
@@ -238,7 +234,7 @@ func (s *DaemonServer) Restart(request *pb.StopRequest, stream pb.ProcessService
 			unitStatus := unit.GetStatus()
 
 			if unitStatus == RUNNING {
-				if err := stopProcess(unit.Command.Process); err != nil {
+				if err := unit.Stop(); err != nil {
 					response.Error = err.Error()
 					response.Unit = unit.ToPB()
 					return stream.Send(response)
@@ -457,10 +453,6 @@ func (s *DaemonServer) LogsClear(ctx context.Context, request *pb.LogsClearReque
 	}
 
 	return &emptypb.Empty{}, nil
-}
-
-func stopProcess(process *os.Process) error {
-	return process.Signal(syscall.SIGINT)
 }
 
 func createUnitStartCommand(
