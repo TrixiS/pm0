@@ -17,7 +17,6 @@ import (
 )
 
 // TODO: pm0 logs clear <ident> - to clear the logs file
-// TODO: resolve ident on server (so client does not need to fetch it twice)
 // TODO?: preserve stopped units
 
 const CLIClientDBFilename = "pm0_cli.db"
@@ -59,7 +58,8 @@ func main() {
 	}
 
 	app := &cli.App{
-		Description: "Command line interface for pm0 daemon",
+		Name:  "pm0",
+		Usage: "CLI client for PM0 daemon",
 		Commands: []*cli.Command{
 			{
 				Name: "start",
@@ -69,7 +69,7 @@ func main() {
 						Required: true,
 					},
 				},
-				Usage:     "start a unit",
+				Usage:     "Start a unit",
 				UsageText: "command",
 				Args:      true,
 				Action:    contextProvider.Wraps(commands.Start),
@@ -77,19 +77,19 @@ func main() {
 			{
 				Name:    "list",
 				Aliases: []string{"ls"},
-				Usage:   "list units",
+				Usage:   "List units",
 				Args:    false,
 				Action:  contextProvider.Wraps(commands.List),
 			},
 			{
 				Name:   "stop",
-				Usage:  "stop a unit",
+				Usage:  "Stop a unit",
 				Args:   true,
 				Action: contextProvider.Wraps(commands.Stop),
 			},
 			{
 				Name:   "restart",
-				Usage:  "restart a unit",
+				Usage:  "Restart a unit",
 				Args:   true,
 				Action: contextProvider.Wraps(commands.Restart),
 			},
@@ -106,19 +106,19 @@ func main() {
 						Aliases:  []string{"f"},
 					},
 				},
-				Usage:  "show unit logfile contents",
+				Usage:  "Show unit logfile contents",
 				Args:   true,
 				Action: contextProvider.Wraps(commands.Logs),
 			},
 			{
 				Name:   "delete",
-				Usage:  "delete units",
+				Usage:  "Delete units",
 				Args:   true,
 				Action: contextProvider.Wraps(commands.Delete),
 			},
 			{
 				Name:   "show",
-				Usage:  "show unit info",
+				Usage:  "Show unit info",
 				Args:   true,
 				Action: contextProvider.Wraps(commands.Show),
 			},
