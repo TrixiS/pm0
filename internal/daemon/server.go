@@ -442,6 +442,23 @@ func (s *DaemonServer) Show(ctx context.Context, request *pb.ShowRequest) (*pb.S
 	return &response, nil
 }
 
+func (s *DaemonServer) LogsClear(ctx context.Context, request *pb.LogsClearRequest) (*emptypb.Empty, error) {
+	for _, id := range request.UnitIds {
+		unitID := UnitID(id)
+
+		if s.units[unitID] == nil {
+			continue
+		}
+
+		go func() {
+			logFilepath := s.getUnitLogFilepath(unitID)
+			os.Truncate(logFilepath, 0)
+		}()
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
 func stopProcess(process *os.Process) error {
 	return process.Signal(syscall.SIGINT)
 }

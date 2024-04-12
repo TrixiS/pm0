@@ -20,13 +20,14 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ProcessService_Start_FullMethodName   = "/pm0.ProcessService/Start"
-	ProcessService_List_FullMethodName    = "/pm0.ProcessService/List"
-	ProcessService_Stop_FullMethodName    = "/pm0.ProcessService/Stop"
-	ProcessService_Restart_FullMethodName = "/pm0.ProcessService/Restart"
-	ProcessService_Logs_FullMethodName    = "/pm0.ProcessService/Logs"
-	ProcessService_Delete_FullMethodName  = "/pm0.ProcessService/Delete"
-	ProcessService_Show_FullMethodName    = "/pm0.ProcessService/Show"
+	ProcessService_Start_FullMethodName     = "/pm0.ProcessService/Start"
+	ProcessService_List_FullMethodName      = "/pm0.ProcessService/List"
+	ProcessService_Stop_FullMethodName      = "/pm0.ProcessService/Stop"
+	ProcessService_Restart_FullMethodName   = "/pm0.ProcessService/Restart"
+	ProcessService_Logs_FullMethodName      = "/pm0.ProcessService/Logs"
+	ProcessService_Delete_FullMethodName    = "/pm0.ProcessService/Delete"
+	ProcessService_Show_FullMethodName      = "/pm0.ProcessService/Show"
+	ProcessService_LogsClear_FullMethodName = "/pm0.ProcessService/LogsClear"
 )
 
 // ProcessServiceClient is the client API for ProcessService service.
@@ -40,6 +41,7 @@ type ProcessServiceClient interface {
 	Logs(ctx context.Context, in *LogsRequest, opts ...grpc.CallOption) (ProcessService_LogsClient, error)
 	Delete(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (ProcessService_DeleteClient, error)
 	Show(ctx context.Context, in *ShowRequest, opts ...grpc.CallOption) (*ShowResponse, error)
+	LogsClear(ctx context.Context, in *LogsClearRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type processServiceClient struct {
@@ -205,6 +207,15 @@ func (c *processServiceClient) Show(ctx context.Context, in *ShowRequest, opts .
 	return out, nil
 }
 
+func (c *processServiceClient) LogsClear(ctx context.Context, in *LogsClearRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ProcessService_LogsClear_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ProcessServiceServer is the server API for ProcessService service.
 // All implementations must embed UnimplementedProcessServiceServer
 // for forward compatibility
@@ -216,6 +227,7 @@ type ProcessServiceServer interface {
 	Logs(*LogsRequest, ProcessService_LogsServer) error
 	Delete(*StopRequest, ProcessService_DeleteServer) error
 	Show(context.Context, *ShowRequest) (*ShowResponse, error)
+	LogsClear(context.Context, *LogsClearRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedProcessServiceServer()
 }
 
@@ -243,6 +255,9 @@ func (UnimplementedProcessServiceServer) Delete(*StopRequest, ProcessService_Del
 }
 func (UnimplementedProcessServiceServer) Show(context.Context, *ShowRequest) (*ShowResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Show not implemented")
+}
+func (UnimplementedProcessServiceServer) LogsClear(context.Context, *LogsClearRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LogsClear not implemented")
 }
 func (UnimplementedProcessServiceServer) mustEmbedUnimplementedProcessServiceServer() {}
 
@@ -395,6 +410,24 @@ func _ProcessService_Show_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ProcessService_LogsClear_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LogsClearRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProcessServiceServer).LogsClear(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProcessService_LogsClear_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProcessServiceServer).LogsClear(ctx, req.(*LogsClearRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ProcessService_ServiceDesc is the grpc.ServiceDesc for ProcessService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -413,6 +446,10 @@ var ProcessService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Show",
 			Handler:    _ProcessService_Show_Handler,
+		},
+		{
+			MethodName: "LogsClear",
+			Handler:    _ProcessService_LogsClear_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

@@ -63,6 +63,10 @@ message ShowResponse {
     string command = 4;
 }
 
+message LogsClearRequest {
+    repeated uint32 unit_ids = 1;
+}
+
 service ProcessService {
     rpc Start(StartRequest) returns (StartResponse);
     rpc List(google.protobuf.Empty) returns (ListResponse);
@@ -71,4 +75,5 @@ service ProcessService {
     rpc Logs(LogsRequest) returns (stream LogsResponse);
     rpc Delete(StopRequest) returns (stream StopResponse); 
     rpc Show(ShowRequest) returns (ShowResponse);
+    rpc LogsClear(LogsClearRequest) returns (google.protobuf.Empty);
 }

@@ -16,7 +16,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// TODO: pm0 logs clear <ident> - to clear the logs file
 // TODO?: preserve stopped units
 
 const CLIClientDBFilename = "pm0_cli.db"
@@ -111,6 +110,14 @@ func main() {
 				Usage:  "Show unit logfile contents",
 				Args:   true,
 				Action: contextProvider.Wraps(commands.Logs),
+				Subcommands: []*cli.Command{
+					{
+						Name:   "clear",
+						Usage:  "Clear unit log file",
+						Args:   true,
+						Action: contextProvider.Wraps(commands.LogsClear),
+					},
+				},
 			},
 			{
 				Name:   "delete",
