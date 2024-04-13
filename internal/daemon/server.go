@@ -97,15 +97,15 @@ func (s *DaemonServer) RestartUnit(model UnitModel) (*Unit, error) {
 	db.Commit()
 	db.Close()
 
-	unitCopy := &Unit{
+	unit := &Unit{
 		Model:     model,
 		Command:   command,
 		LogFile:   logFile,
 		StartedAt: time.Now(),
 	}
 
-	s.addUnit(unitCopy)
-	return unitCopy, nil
+	s.addUnit(unit)
+	return unit, nil
 }
 
 func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb.StartResponse, error) {
@@ -403,7 +403,7 @@ func (s *DaemonServer) Delete(request *pb.StopRequest, stream pb.ProcessService_
 			delete(s.units, unit.Model.ID)
 
 			if unit.GetStatus() == RUNNING {
-				stopProcess(unit.Command.Process)
+				unit.Stop()
 			}
 
 			return stream.Send(&pb.StopResponse{
