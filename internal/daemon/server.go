@@ -59,13 +59,13 @@ func (s DaemonServer) openUnitLogFile(unitID UnitID) (*os.File, error) {
 	return os.OpenFile(logFilepath, LogFileFlag, LogFilePerm)
 }
 
-func (s *DaemonServer) watchUnitProcess(unit *Unit) {
+func (s *DaemonServer) watchUnit(unit *Unit) {
 	unit.Command.Wait()
 	unit.LogFile.Close()
 
 	time.Sleep(FailRestartDelay)
 
-	if s.units[unit.Model.ID] == nil || unit.GetStatus() != FAILED {
+	if unit.GetStatus() != FAILED {
 		return
 	}
 
@@ -74,7 +74,7 @@ func (s *DaemonServer) watchUnitProcess(unit *Unit) {
 
 func (s *DaemonServer) addUnit(unit *Unit) {
 	s.units[unit.Model.ID] = unit
-	go s.watchUnitProcess(unit)
+	go s.watchUnit(unit)
 }
 
 func (s *DaemonServer) RestartUnit(model UnitModel) (*Unit, error) {
