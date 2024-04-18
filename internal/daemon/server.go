@@ -25,7 +25,7 @@ const LogFilePerm = 0666
 
 const LogsTailDefault uint64 = 32
 const LogsTailMax uint64 = 1000
-const LogsMaxBytes uint32 = 4 * 8 * 1024 * 1024 // 4 MB
+const LogsMaxBytes uint32 = 4 * 1024 * 1024 // 4 MB
 const LogsFollowInterval time.Duration = time.Second
 
 const FailRestartDelay time.Duration = time.Second * 5
