@@ -20,8 +20,7 @@ func List(ctx *command_context.CommandContext) error {
 		}
 
 		if len(response.Units) == 0 {
-			pm0.Printf("no units")
-			return nil
+			return pm0.ErrEmptyUnits
 		}
 
 		t := table.NewWriter()

@@ -141,6 +141,10 @@ func main() {
 				Args:   true,
 				Action: contextProvider.Wraps(commands.Show),
 			},
+			{
+				Name:   "setup",
+				Action: contextProvider.Wraps(commands.Setup),
+			},
 		},
 	}
 
