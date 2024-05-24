@@ -10,14 +10,8 @@ import (
 )
 
 func Restart(ctx *command_context.CommandContext) error {
-	args := ctx.CLIContext.Args()
-
-	if args.Len() == 0 {
-		return pm0.ErrNoIdent
-	}
-
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		unitIDs, err := pm0.GetUnitIDsFromIdents(ctx.CLIContext.Context, client, args.Slice(), true)
+		unitIDs, err := pm0.GetUnitIDsFromArgs(ctx.CLIContext, client, false)
 
 		if err != nil {
 			return err

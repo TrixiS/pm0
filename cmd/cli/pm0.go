@@ -58,6 +58,12 @@ func main() {
 		},
 	}
 
+	exceptFlag := &cli.StringSliceFlag{
+		Name:     "except",
+		Aliases:  []string{"e"},
+		Required: false,
+	}
+
 	app := &cli.App{
 		Name:  "pm0",
 		Usage: "CLI client for PM0 daemon",
@@ -67,7 +73,7 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "name",
-						Required: true,
+						Required: false,
 					},
 				},
 				Usage:     "Start a unit",
@@ -85,12 +91,14 @@ func main() {
 			{
 				Name:   "stop",
 				Usage:  "Stop a unit",
+				Flags:  []cli.Flag{exceptFlag},
 				Args:   true,
 				Action: contextProvider.Wraps(commands.Stop),
 			},
 			{
 				Name:   "restart",
 				Usage:  "Restart a unit",
+				Flags:  []cli.Flag{exceptFlag},
 				Args:   true,
 				Action: contextProvider.Wraps(commands.Restart),
 			},
@@ -120,10 +128,12 @@ func main() {
 				},
 			},
 			{
-				Name:   "delete",
-				Usage:  "Delete units",
-				Args:   true,
-				Action: contextProvider.Wraps(commands.Delete),
+				Name:    "delete",
+				Usage:   "Delete units",
+				Aliases: []string{"rm"},
+				Flags:   []cli.Flag{exceptFlag},
+				Args:    true,
+				Action:  contextProvider.Wraps(commands.Delete),
 			},
 			{
 				Name:   "show",
