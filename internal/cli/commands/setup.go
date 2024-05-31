@@ -65,6 +65,18 @@ func Setup(ctx *command_context.CommandContext) error {
 		return fmt.Errorf("copy %s -> %s: %w", cliFilepath, cliBinFilepath, err)
 	}
 
+	err = exec.CommandContext(ctx.CLIContext.Context, "systemctl", "enable", daemonServiceFilepath).Run()
+
+	if err != nil {
+		return fmt.Errorf("failed to enable daemon service: %w", err)
+	}
+
+	err = exec.CommandContext(ctx.CLIContext.Context, "systemctl", "start", daemonServiceFilepath).Run()
+
+	if err != nil {
+		return fmt.Errorf("failed to start daemon service: %w", err)
+	}
+
 	pm0.Printf("pm0 daemon successfully set up")
 	return nil
 }
