@@ -58,12 +58,6 @@ func main() {
 		},
 	}
 
-	exceptFlag := &cli.StringSliceFlag{
-		Name:     "except",
-		Aliases:  []string{"e"},
-		Required: false,
-	}
-
 	app := &cli.App{
 		Name:  "pm0",
 		Usage: "CLI client for PM0 daemon",
@@ -89,18 +83,18 @@ func main() {
 				Action:  contextProvider.Wraps(commands.List),
 			},
 			{
-				Name:   "stop",
-				Usage:  "Stop a unit",
-				Flags:  []cli.Flag{exceptFlag},
-				Args:   true,
-				Action: contextProvider.Wraps(commands.Stop),
+				Name:        "stop",
+				Usage:       "Stop a unit",
+				Args:        true,
+				Action:      contextProvider.Wraps(commands.Stop),
+				Subcommands: []*cli.Command{createAllSubcommand(contextProvider.Wraps(commands.StopAll))},
 			},
 			{
-				Name:   "restart",
-				Usage:  "Restart a unit",
-				Flags:  []cli.Flag{exceptFlag},
-				Args:   true,
-				Action: contextProvider.Wraps(commands.Restart),
+				Name:        "restart",
+				Usage:       "Restart a unit",
+				Args:        true,
+				Action:      contextProvider.Wraps(commands.Restart),
+				Subcommands: []*cli.Command{createAllSubcommand(contextProvider.Wraps(commands.RestartAll))},
 			},
 			{
 				Name: "logs",
@@ -128,12 +122,12 @@ func main() {
 				},
 			},
 			{
-				Name:    "delete",
-				Usage:   "Delete units",
-				Aliases: []string{"rm"},
-				Flags:   []cli.Flag{exceptFlag},
-				Args:    true,
-				Action:  contextProvider.Wraps(commands.Delete),
+				Name:        "delete",
+				Usage:       "Delete units",
+				Aliases:     []string{"rm"},
+				Args:        true,
+				Action:      contextProvider.Wraps(commands.Delete),
+				Subcommands: []*cli.Command{createAllSubcommand(contextProvider.Wraps(commands.DeleteAll))},
 			},
 			{
 				Name:   "show",
@@ -150,5 +144,22 @@ func main() {
 
 	if err := app.Run(os.Args); err != nil {
 		pm0.Printf(err.Error())
+	}
+}
+
+var allSubCommandFlags = []cli.Flag{
+	&cli.Uint64SliceFlag{
+		Name:     "except",
+		Aliases:  []string{"e"},
+		Required: false,
+	},
+}
+
+func createAllSubcommand(action cli.ActionFunc) *cli.Command {
+	return &cli.Command{
+		Name:   "all",
+		Flags:  allSubCommandFlags,
+		Args:   false,
+		Action: action,
 	}
 }

@@ -13,7 +13,7 @@ import (
 
 func Logs(ctx *command_context.CommandContext) error {
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		unitIDs, err := pm0.GetUnitIDsFromArgs(ctx.CLIContext, client, true)
+		unitID, err := pm0.ParseStringUnitID(ctx.CLIContext.Args().First())
 
 		if err != nil {
 			return err
@@ -22,7 +22,7 @@ func Logs(ctx *command_context.CommandContext) error {
 		stream, err := client.Logs(
 			ctx.CLIContext.Context,
 			&pb.LogsRequest{
-				UnitId: unitIDs[0],
+				UnitId: unitID,
 				Follow: ctx.CLIContext.Bool("follow"),
 				Lines:  ctx.CLIContext.Uint64("lines"),
 			},

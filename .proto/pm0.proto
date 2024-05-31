@@ -8,7 +8,7 @@ import "google/protobuf/empty.proto";
 
 
 message Unit {
-    uint32 id = 1;
+    uint64 id = 1;
     string name = 2;
     optional int32 pid = 3;
     uint32 status = 4;
@@ -33,17 +33,17 @@ message ListResponse {
 }
 
 message StopRequest {
-    repeated uint32 unit_ids = 1;
+    repeated uint64 unit_ids = 1;
 }
 
 message StopResponse {
-    uint32 unit_id = 1;
+    uint64 unit_id = 1;
     optional Unit unit = 2;
     string error = 3;
 }
 
 message LogsRequest {
-    uint32 unit_id = 1;
+    uint64 unit_id = 1;
     bool follow = 2;
     uint64 lines = 3;
 }
@@ -53,27 +53,34 @@ message LogsResponse {
 }
 
 message ShowRequest {
-    uint32 unit_id = 1;
+    uint64 unit_id = 1;
 }
 
 message ShowResponse {
-    uint32 id = 1;
+    uint64 id = 1;
     string name = 2;
     string cwd = 3;
     string command = 4;
 }
 
 message LogsClearRequest {
-    repeated uint32 unit_ids = 1;
+    repeated uint64 unit_ids = 1;
+}
+
+message ExceptRequest {
+    repeated uint64 unit_ids = 1;
 }
 
 service ProcessService {
     rpc Start(StartRequest) returns (StartResponse);
     rpc List(google.protobuf.Empty) returns (ListResponse);
     rpc Stop(StopRequest) returns (stream StopResponse);
+    rpc StopAll(ExceptRequest) returns (stream StopResponse);
     rpc Restart(StopRequest) returns (stream StopResponse);
+    rpc RestartAll(ExceptRequest) returns (stream StopResponse);
     rpc Logs(LogsRequest) returns (stream LogsResponse);
     rpc Delete(StopRequest) returns (stream StopResponse); 
+    rpc DeleteAll(ExceptRequest) returns (stream StopResponse); 
     rpc Show(ShowRequest) returns (ShowResponse);
     rpc LogsClear(LogsClearRequest) returns (google.protobuf.Empty);
 }

@@ -18,10 +18,8 @@ const (
 	STOPPED UnitStatus = 3
 )
 
-type UnitID uint32
-
 type UnitModel struct {
-	ID            UnitID `storm:"id,increment"`
+	ID            uint64 `storm:"id,increment"`
 	Name          string
 	CWD           string
 	Bin           string
@@ -67,7 +65,7 @@ func (u Unit) ToPB() *pb.Unit {
 	}
 
 	return &pb.Unit{
-		Id:            uint32(u.Model.ID),
+		Id:            u.Model.ID,
 		Name:          u.Model.Name,
 		Pid:           pid,
 		Status:        uint32(unitStatus),

@@ -8,7 +8,7 @@ import (
 
 func LogsClear(ctx *command_context.CommandContext) error {
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		unitIDs, err := pm0.GetUnitIDsFromArgs(ctx.CLIContext, client, false)
+		unitIDs, err := pm0.ParseUnitIDsFromArgs(ctx.CLIContext.Args().Slice())
 
 		if err != nil {
 			return err

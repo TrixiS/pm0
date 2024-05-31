@@ -10,7 +10,6 @@ import (
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
 
-// TODO: if name is empty string (make it optional) then decide name from cwd dirname
 func Start(ctx *command_context.CommandContext) error {
 	if ctx.CLIContext.NArg() == 0 {
 		return fmt.Errorf("specify a binary and optional args")

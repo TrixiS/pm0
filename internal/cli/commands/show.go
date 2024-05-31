@@ -13,13 +13,13 @@ import (
 
 func Show(ctx *command_context.CommandContext) error {
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		unitIDs, err := pm0.GetUnitIDsFromArgs(ctx.CLIContext, client, true)
+		unitID, err := pm0.ParseStringUnitID(ctx.CLIContext.Args().First())
 
 		if err != nil {
 			return err
 		}
 
-		response, err := client.Show(ctx.CLIContext.Context, &pb.ShowRequest{UnitId: unitIDs[0]})
+		response, err := client.Show(ctx.CLIContext.Context, &pb.ShowRequest{UnitId: unitID})
 
 		if err != nil {
 			return err

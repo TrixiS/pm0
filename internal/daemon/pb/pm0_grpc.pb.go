@@ -20,14 +20,17 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ProcessService_Start_FullMethodName     = "/pm0.ProcessService/Start"
-	ProcessService_List_FullMethodName      = "/pm0.ProcessService/List"
-	ProcessService_Stop_FullMethodName      = "/pm0.ProcessService/Stop"
-	ProcessService_Restart_FullMethodName   = "/pm0.ProcessService/Restart"
-	ProcessService_Logs_FullMethodName      = "/pm0.ProcessService/Logs"
-	ProcessService_Delete_FullMethodName    = "/pm0.ProcessService/Delete"
-	ProcessService_Show_FullMethodName      = "/pm0.ProcessService/Show"
-	ProcessService_LogsClear_FullMethodName = "/pm0.ProcessService/LogsClear"
+	ProcessService_Start_FullMethodName      = "/pm0.ProcessService/Start"
+	ProcessService_List_FullMethodName       = "/pm0.ProcessService/List"
+	ProcessService_Stop_FullMethodName       = "/pm0.ProcessService/Stop"
+	ProcessService_StopAll_FullMethodName    = "/pm0.ProcessService/StopAll"
+	ProcessService_Restart_FullMethodName    = "/pm0.ProcessService/Restart"
+	ProcessService_RestartAll_FullMethodName = "/pm0.ProcessService/RestartAll"
+	ProcessService_Logs_FullMethodName       = "/pm0.ProcessService/Logs"
+	ProcessService_Delete_FullMethodName     = "/pm0.ProcessService/Delete"
+	ProcessService_DeleteAll_FullMethodName  = "/pm0.ProcessService/DeleteAll"
+	ProcessService_Show_FullMethodName       = "/pm0.ProcessService/Show"
+	ProcessService_LogsClear_FullMethodName  = "/pm0.ProcessService/LogsClear"
 )
 
 // ProcessServiceClient is the client API for ProcessService service.
@@ -37,9 +40,12 @@ type ProcessServiceClient interface {
 	Start(ctx context.Context, in *StartRequest, opts ...grpc.CallOption) (*StartResponse, error)
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListResponse, error)
 	Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (ProcessService_StopClient, error)
+	StopAll(ctx context.Context, in *ExceptRequest, opts ...grpc.CallOption) (ProcessService_StopAllClient, error)
 	Restart(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (ProcessService_RestartClient, error)
+	RestartAll(ctx context.Context, in *ExceptRequest, opts ...grpc.CallOption) (ProcessService_RestartAllClient, error)
 	Logs(ctx context.Context, in *LogsRequest, opts ...grpc.CallOption) (ProcessService_LogsClient, error)
 	Delete(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (ProcessService_DeleteClient, error)
+	DeleteAll(ctx context.Context, in *ExceptRequest, opts ...grpc.CallOption) (ProcessService_DeleteAllClient, error)
 	Show(ctx context.Context, in *ShowRequest, opts ...grpc.CallOption) (*ShowResponse, error)
 	LogsClear(ctx context.Context, in *LogsClearRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
@@ -102,8 +108,40 @@ func (x *processServiceStopClient) Recv() (*StopResponse, error) {
 	return m, nil
 }
 
+func (c *processServiceClient) StopAll(ctx context.Context, in *ExceptRequest, opts ...grpc.CallOption) (ProcessService_StopAllClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ProcessService_ServiceDesc.Streams[1], ProcessService_StopAll_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &processServiceStopAllClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type ProcessService_StopAllClient interface {
+	Recv() (*StopResponse, error)
+	grpc.ClientStream
+}
+
+type processServiceStopAllClient struct {
+	grpc.ClientStream
+}
+
+func (x *processServiceStopAllClient) Recv() (*StopResponse, error) {
+	m := new(StopResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *processServiceClient) Restart(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (ProcessService_RestartClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ProcessService_ServiceDesc.Streams[1], ProcessService_Restart_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &ProcessService_ServiceDesc.Streams[2], ProcessService_Restart_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -134,8 +172,40 @@ func (x *processServiceRestartClient) Recv() (*StopResponse, error) {
 	return m, nil
 }
 
+func (c *processServiceClient) RestartAll(ctx context.Context, in *ExceptRequest, opts ...grpc.CallOption) (ProcessService_RestartAllClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ProcessService_ServiceDesc.Streams[3], ProcessService_RestartAll_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &processServiceRestartAllClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type ProcessService_RestartAllClient interface {
+	Recv() (*StopResponse, error)
+	grpc.ClientStream
+}
+
+type processServiceRestartAllClient struct {
+	grpc.ClientStream
+}
+
+func (x *processServiceRestartAllClient) Recv() (*StopResponse, error) {
+	m := new(StopResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *processServiceClient) Logs(ctx context.Context, in *LogsRequest, opts ...grpc.CallOption) (ProcessService_LogsClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ProcessService_ServiceDesc.Streams[2], ProcessService_Logs_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &ProcessService_ServiceDesc.Streams[4], ProcessService_Logs_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +237,7 @@ func (x *processServiceLogsClient) Recv() (*LogsResponse, error) {
 }
 
 func (c *processServiceClient) Delete(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (ProcessService_DeleteClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ProcessService_ServiceDesc.Streams[3], ProcessService_Delete_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &ProcessService_ServiceDesc.Streams[5], ProcessService_Delete_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -191,6 +261,38 @@ type processServiceDeleteClient struct {
 }
 
 func (x *processServiceDeleteClient) Recv() (*StopResponse, error) {
+	m := new(StopResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *processServiceClient) DeleteAll(ctx context.Context, in *ExceptRequest, opts ...grpc.CallOption) (ProcessService_DeleteAllClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ProcessService_ServiceDesc.Streams[6], ProcessService_DeleteAll_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &processServiceDeleteAllClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type ProcessService_DeleteAllClient interface {
+	Recv() (*StopResponse, error)
+	grpc.ClientStream
+}
+
+type processServiceDeleteAllClient struct {
+	grpc.ClientStream
+}
+
+func (x *processServiceDeleteAllClient) Recv() (*StopResponse, error) {
 	m := new(StopResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -223,9 +325,12 @@ type ProcessServiceServer interface {
 	Start(context.Context, *StartRequest) (*StartResponse, error)
 	List(context.Context, *emptypb.Empty) (*ListResponse, error)
 	Stop(*StopRequest, ProcessService_StopServer) error
+	StopAll(*ExceptRequest, ProcessService_StopAllServer) error
 	Restart(*StopRequest, ProcessService_RestartServer) error
+	RestartAll(*ExceptRequest, ProcessService_RestartAllServer) error
 	Logs(*LogsRequest, ProcessService_LogsServer) error
 	Delete(*StopRequest, ProcessService_DeleteServer) error
+	DeleteAll(*ExceptRequest, ProcessService_DeleteAllServer) error
 	Show(context.Context, *ShowRequest) (*ShowResponse, error)
 	LogsClear(context.Context, *LogsClearRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedProcessServiceServer()
@@ -244,14 +349,23 @@ func (UnimplementedProcessServiceServer) List(context.Context, *emptypb.Empty) (
 func (UnimplementedProcessServiceServer) Stop(*StopRequest, ProcessService_StopServer) error {
 	return status.Errorf(codes.Unimplemented, "method Stop not implemented")
 }
+func (UnimplementedProcessServiceServer) StopAll(*ExceptRequest, ProcessService_StopAllServer) error {
+	return status.Errorf(codes.Unimplemented, "method StopAll not implemented")
+}
 func (UnimplementedProcessServiceServer) Restart(*StopRequest, ProcessService_RestartServer) error {
 	return status.Errorf(codes.Unimplemented, "method Restart not implemented")
+}
+func (UnimplementedProcessServiceServer) RestartAll(*ExceptRequest, ProcessService_RestartAllServer) error {
+	return status.Errorf(codes.Unimplemented, "method RestartAll not implemented")
 }
 func (UnimplementedProcessServiceServer) Logs(*LogsRequest, ProcessService_LogsServer) error {
 	return status.Errorf(codes.Unimplemented, "method Logs not implemented")
 }
 func (UnimplementedProcessServiceServer) Delete(*StopRequest, ProcessService_DeleteServer) error {
 	return status.Errorf(codes.Unimplemented, "method Delete not implemented")
+}
+func (UnimplementedProcessServiceServer) DeleteAll(*ExceptRequest, ProcessService_DeleteAllServer) error {
+	return status.Errorf(codes.Unimplemented, "method DeleteAll not implemented")
 }
 func (UnimplementedProcessServiceServer) Show(context.Context, *ShowRequest) (*ShowResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Show not implemented")
@@ -329,6 +443,27 @@ func (x *processServiceStopServer) Send(m *StopResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _ProcessService_StopAll_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ExceptRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ProcessServiceServer).StopAll(m, &processServiceStopAllServer{stream})
+}
+
+type ProcessService_StopAllServer interface {
+	Send(*StopResponse) error
+	grpc.ServerStream
+}
+
+type processServiceStopAllServer struct {
+	grpc.ServerStream
+}
+
+func (x *processServiceStopAllServer) Send(m *StopResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 func _ProcessService_Restart_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(StopRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -347,6 +482,27 @@ type processServiceRestartServer struct {
 }
 
 func (x *processServiceRestartServer) Send(m *StopResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _ProcessService_RestartAll_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ExceptRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ProcessServiceServer).RestartAll(m, &processServiceRestartAllServer{stream})
+}
+
+type ProcessService_RestartAllServer interface {
+	Send(*StopResponse) error
+	grpc.ServerStream
+}
+
+type processServiceRestartAllServer struct {
+	grpc.ServerStream
+}
+
+func (x *processServiceRestartAllServer) Send(m *StopResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -389,6 +545,27 @@ type processServiceDeleteServer struct {
 }
 
 func (x *processServiceDeleteServer) Send(m *StopResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _ProcessService_DeleteAll_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ExceptRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ProcessServiceServer).DeleteAll(m, &processServiceDeleteAllServer{stream})
+}
+
+type ProcessService_DeleteAllServer interface {
+	Send(*StopResponse) error
+	grpc.ServerStream
+}
+
+type processServiceDeleteAllServer struct {
+	grpc.ServerStream
+}
+
+func (x *processServiceDeleteAllServer) Send(m *StopResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -459,8 +636,18 @@ var ProcessService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 		{
+			StreamName:    "StopAll",
+			Handler:       _ProcessService_StopAll_Handler,
+			ServerStreams: true,
+		},
+		{
 			StreamName:    "Restart",
 			Handler:       _ProcessService_Restart_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "RestartAll",
+			Handler:       _ProcessService_RestartAll_Handler,
 			ServerStreams: true,
 		},
 		{
@@ -471,6 +658,11 @@ var ProcessService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Delete",
 			Handler:       _ProcessService_Delete_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "DeleteAll",
+			Handler:       _ProcessService_DeleteAll_Handler,
 			ServerStreams: true,
 		},
 	},
