@@ -52,7 +52,8 @@ func Setup(ctx *command_context.CommandContext) error {
 
 	defer serviceFile.Close()
 
-	serviceString := fmt.Sprintf(setupScript, execDirpath, execFilepath)
+	daemonFilepath := path.Join(execDirpath, "pm0_daemon")
+	serviceString := fmt.Sprintf(setupScript, execDirpath, daemonFilepath)
 	_, err = serviceFile.WriteString(serviceString)
 
 	if err != nil {
