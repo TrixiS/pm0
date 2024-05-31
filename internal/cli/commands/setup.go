@@ -25,6 +25,7 @@ RestartSec=3
 [Install]
 WantedBy=multi-user.target`
 
+const daemonServiceFilename string = "pm0_daemon.service"
 const daemonServiceFilepath string = "/etc/systemd/system/pm0_daemon.service"
 const cliBinFilepath string = "/usr/bin/pm0"
 
@@ -66,13 +67,13 @@ func Setup(ctx *command_context.CommandContext) error {
 		return fmt.Errorf("copy %s -> %s: %w", cliFilepath, cliBinFilepath, err)
 	}
 
-	err = exec.CommandContext(ctx.CLIContext.Context, "systemctl", "enable", daemonServiceFilepath).Run()
+	err = exec.CommandContext(ctx.CLIContext.Context, "systemctl", "enable", daemonServiceFilename).Run()
 
 	if err != nil {
 		return fmt.Errorf("failed to enable daemon service: %w", err)
 	}
 
-	err = exec.CommandContext(ctx.CLIContext.Context, "systemctl", "start", daemonServiceFilepath).Run()
+	err = exec.CommandContext(ctx.CLIContext.Context, "systemctl", "start", daemonServiceFilename).Run()
 
 	if err != nil {
 		return fmt.Errorf("failed to start daemon service: %w", err)
