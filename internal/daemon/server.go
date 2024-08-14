@@ -78,34 +78,35 @@ func (s *DaemonServer) addUnit(unit *Unit) {
 	go s.watchUnit(unit)
 }
 
-func (s *DaemonServer) stopUnitsStream(unitIDs []uint64, stream pb.ProcessService_StopServer) error {
+func (s *DaemonServer) stopUnitsStream(unitIDs []uint64, force bool, stream pb.ProcessService_StopServer) error {
 	eg, _ := errgroup.WithContext(stream.Context())
 
 	for _, unitID := range unitIDs {
 		id := unitID
 
 		eg.Go(func() error {
-			unit := s.units[id]
+			u := s.units[id]
 			response := &pb.StopResponse{UnitId: id}
 
-			if unit == nil {
+			if u == nil {
 				response.Error = fmt.Sprintf("unit %d not found", id)
 				return stream.Send(response)
 			}
 
-			if unit.GetStatus() != RUNNING {
-				response.Error = fmt.Sprintf("unit %s is not running", unit.Model.Name)
-				response.Unit = unit.ToPB()
+			if u.GetStatus() != RUNNING {
+				u.IsStopped = true
+				response.Error = fmt.Sprintf("unit %s is not running", u.Model.Name)
+				response.Unit = u.PB()
 				return stream.Send(response)
 			}
 
-			if err := unit.Stop(); err != nil {
+			if err := u.Stop(force); err != nil {
 				response.Error = err.Error()
-				response.Unit = unit.ToPB()
+				response.Unit = u.PB()
 				return stream.Send(response)
 			}
 
-			response.Unit = unit.ToPB()
+			response.Unit = u.PB()
 			return stream.Send(response)
 		})
 	}
@@ -113,7 +114,7 @@ func (s *DaemonServer) stopUnitsStream(unitIDs []uint64, stream pb.ProcessServic
 	return eg.Wait()
 }
 
-func (s *DaemonServer) restartUnitsStream(unitIDs []uint64, stream pb.ProcessService_RestartServer) error {
+func (s *DaemonServer) restartUnitsStream(unitIDs []uint64, force bool, stream pb.ProcessService_RestartServer) error {
 	eg, _ := errgroup.WithContext(stream.Context())
 
 	for _, unitID := range unitIDs {
@@ -128,12 +129,10 @@ func (s *DaemonServer) restartUnitsStream(unitIDs []uint64, stream pb.ProcessSer
 				return stream.Send(response)
 			}
 
-			unitStatus := unit.GetStatus()
-
-			if unitStatus == RUNNING {
-				if err := unit.Stop(); err != nil {
+			if unit.GetStatus() == RUNNING {
+				if err := unit.Stop(force); err != nil {
 					response.Error = err.Error()
-					response.Unit = unit.ToPB()
+					response.Unit = unit.PB()
 					return stream.Send(response)
 				}
 			}
@@ -142,11 +141,11 @@ func (s *DaemonServer) restartUnitsStream(unitIDs []uint64, stream pb.ProcessSer
 
 			if err != nil {
 				response.Error = err.Error()
-				response.Unit = unit.ToPB()
+				response.Unit = unit.PB()
 				return stream.Send(response)
 			}
 
-			response.Unit = unitCopy.ToPB()
+			response.Unit = unitCopy.PB()
 			return stream.Send(response)
 		})
 	}
@@ -170,16 +169,13 @@ func (s *DaemonServer) deleteUnitsStream(unitIDs []uint64, stream pb.ProcessServ
 				return stream.Send(response)
 			}
 
-			db.DeleteStruct(&unit.Model)
+			unit.Stop(true)
 			delete(s.units, unit.Model.ID)
-
-			if unit.GetStatus() == RUNNING {
-				unit.Stop()
-			}
+			db.DeleteStruct(&unit.Model)
 
 			return stream.Send(&pb.StopResponse{
 				UnitId: id,
-				Unit:   unit.ToPB(),
+				Unit:   unit.PB(),
 			})
 		})
 	}
@@ -276,7 +272,7 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 	}
 
 	if err := tx.Commit(); err != nil {
-		stopProcess(command.Process)
+		command.Process.Kill()
 		command.Process.Release()
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -291,7 +287,7 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 	s.addUnit(&unit)
 
 	response := pb.StartResponse{
-		Unit: unit.ToPB(),
+		Unit: unit.PB(),
 	}
 
 	return &response, nil
@@ -302,7 +298,7 @@ func (s *DaemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResponse, 
 	unitIdx := 0
 
 	for _, unit := range s.units {
-		units[unitIdx] = unit.ToPB()
+		units[unitIdx] = unit.PB()
 		unitIdx += 1
 	}
 
@@ -314,19 +310,19 @@ func (s *DaemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResponse, 
 }
 
 func (s *DaemonServer) Stop(request *pb.StopRequest, stream pb.ProcessService_StopServer) error {
-	return s.stopUnitsStream(request.UnitIds, stream)
+	return s.stopUnitsStream(request.UnitIds, request.Force, stream)
 }
 
 func (s *DaemonServer) StopAll(request *pb.ExceptRequest, stream pb.ProcessService_StopAllServer) error {
-	return s.stopUnitsStream(s.filterUnitIDs(request.UnitIds), stream)
+	return s.stopUnitsStream(s.filterUnitIDs(request.UnitIds), true, stream)
 }
 
 func (s *DaemonServer) Restart(request *pb.StopRequest, stream pb.ProcessService_RestartServer) error {
-	return s.restartUnitsStream(request.UnitIds, stream)
+	return s.restartUnitsStream(request.UnitIds, request.Force, stream)
 }
 
 func (s *DaemonServer) RestartAll(request *pb.ExceptRequest, stream pb.ProcessService_RestartAllServer) error {
-	return s.restartUnitsStream(s.filterUnitIDs(request.UnitIds), stream)
+	return s.restartUnitsStream(s.filterUnitIDs(request.UnitIds), true, stream)
 }
 
 func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_LogsServer) error {

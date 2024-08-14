@@ -17,7 +17,10 @@ func Restart(ctx *command_context.CommandContext) error {
 			return err
 		}
 
-		stream, err := client.Restart(ctx.CLIContext.Context, &pb.StopRequest{UnitIds: unitIDs})
+		stream, err := client.Restart(
+			ctx.CLIContext.Context,
+			&pb.StopRequest{UnitIds: unitIDs, Force: ctx.CLIContext.Bool("force")},
+		)
 
 		if err != nil {
 			return err

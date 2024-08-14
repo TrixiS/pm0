@@ -58,6 +58,8 @@ func main() {
 		},
 	}
 
+	forceFlags := []cli.Flag{&cli.BoolFlag{Name: "force", Required: false}}
+
 	app := &cli.App{
 		Name:  "pm0",
 		Usage: "CLI client for PM0 daemon",
@@ -88,6 +90,7 @@ func main() {
 				Args:        true,
 				Action:      contextProvider.Wraps(commands.Stop),
 				Subcommands: []*cli.Command{createAllSubcommand(contextProvider.Wraps(commands.StopAll))},
+				Flags:       forceFlags,
 			},
 			{
 				Name:        "restart",
@@ -95,6 +98,7 @@ func main() {
 				Args:        true,
 				Action:      contextProvider.Wraps(commands.Restart),
 				Subcommands: []*cli.Command{createAllSubcommand(contextProvider.Wraps(commands.RestartAll))},
+				Flags:       forceFlags,
 			},
 			{
 				Name: "logs",

@@ -19,6 +19,7 @@ func Stop(ctx *command_context.CommandContext) error {
 
 		stream, err := client.Stop(ctx.CLIContext.Context, &pb.StopRequest{
 			UnitIds: unitIDs,
+			Force:   ctx.CLIContext.Bool("force"),
 		})
 
 		if err != nil {

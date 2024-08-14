@@ -54,7 +54,7 @@ func (u Unit) GetStatus() UnitStatus {
 	}
 }
 
-func (u Unit) ToPB() *pb.Unit {
+func (u Unit) PB() *pb.Unit {
 	var pid *int32
 
 	unitStatus := u.GetStatus()
@@ -74,11 +74,12 @@ func (u Unit) ToPB() *pb.Unit {
 	}
 }
 
-func (u *Unit) Stop() error {
+func (u *Unit) Stop(force bool) error {
 	u.IsStopped = true
-	return stopProcess(u.Command.Process)
-}
 
-func stopProcess(process *os.Process) error {
-	return process.Signal(syscall.SIGINT)
+	if force {
+		return u.Command.Process.Signal(syscall.SIGTERM)
+	}
+
+	return u.Command.Process.Signal(syscall.SIGINT)
 }
