@@ -10,7 +10,7 @@ import (
 	"github.com/TrixiS/pm0/internal/cli/command_context"
 )
 
-const setupScript string = `[Unit]
+const serviceFileTemplate string = `[Unit]
 Description="PM0 Daemon"
 
 [Service]
@@ -27,53 +27,37 @@ WantedBy=multi-user.target`
 
 const daemonServiceFilename string = "pm0_daemon.service"
 const daemonServiceFilepath string = "/etc/systemd/system/pm0_daemon.service"
-const cliBinFilepath string = "/usr/bin/pm0"
+const cliBinFilepath string = "/usr/local/bin/pm0"
 
 func Setup(ctx *command_context.CommandContext) error {
-	execFilepath, err := os.Executable()
+	exeFilepath, err := os.Executable()
 
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get current executable filepath: %w", err)
 	}
 
-	execDirpath := path.Dir(execFilepath)
-	cliFilepath := path.Join(execDirpath, "pm0")
-
-	_, err = os.Stat(cliFilepath)
-
-	if err != nil {
-		return fmt.Errorf("pm0 cli executable not found")
+	if err := os.Symlink(exeFilepath, cliBinFilepath); err != nil {
+		pm0.Printf(err.Error())
+	} else {
+		pm0.Printf("linked %s -> %s", exeFilepath, cliBinFilepath)
 	}
 
-	serviceFile, err := os.OpenFile(daemonServiceFilepath, os.O_CREATE|os.O_RDWR, 0o770)
+	exeDirpath := path.Base(exeFilepath)
+	daemonFilepath := path.Join(exeDirpath, "pm0_daemon")
 
-	if err != nil {
-		return fmt.Errorf("open service file: %v", err)
+	if err := createServiceFile(exeDirpath, daemonFilepath); err != nil {
+		return fmt.Errorf("create service file: %w", err)
 	}
 
-	defer serviceFile.Close()
-
-	daemonFilepath := path.Join(execDirpath, "pm0_daemon")
-	serviceString := fmt.Sprintf(setupScript, execDirpath, daemonFilepath)
-	_, err = serviceFile.WriteString(serviceString)
-
-	if err != nil {
-		return fmt.Errorf("writing service file: %w", err)
-	}
-
-	err = exec.CommandContext(ctx.CLIContext.Context, "cp", cliFilepath, cliBinFilepath).Run()
-
-	if err != nil {
-		return fmt.Errorf("copy %s -> %s: %w", cliFilepath, cliBinFilepath, err)
-	}
-
-	err = exec.CommandContext(ctx.CLIContext.Context, "systemctl", "enable", daemonServiceFilename).Run()
+	err = exec.CommandContext(ctx.CLIContext.Context, "systemctl", "enable", daemonServiceFilename).
+		Run()
 
 	if err != nil {
 		return fmt.Errorf("failed to enable daemon service: %w", err)
 	}
 
-	err = exec.CommandContext(ctx.CLIContext.Context, "systemctl", "start", daemonServiceFilename).Run()
+	err = exec.CommandContext(ctx.CLIContext.Context, "systemctl", "start", daemonServiceFilename).
+		Run()
 
 	if err != nil {
 		return fmt.Errorf("failed to start daemon service: %w", err)
@@ -81,4 +65,17 @@ func Setup(ctx *command_context.CommandContext) error {
 
 	pm0.Printf("pm0 daemon successfully set up")
 	return nil
+}
+
+func createServiceFile(workingDirpath string, daemonExeFilepath string) error {
+	serviceFile, err := os.OpenFile(daemonServiceFilepath, os.O_CREATE|os.O_RDWR, 0o770)
+
+	if err != nil {
+		return err
+	}
+
+	serviceString := fmt.Sprintf(serviceFileTemplate, workingDirpath, daemonExeFilepath)
+	_, err = serviceFile.WriteString(serviceString)
+	serviceFile.Close()
+	return err
 }
