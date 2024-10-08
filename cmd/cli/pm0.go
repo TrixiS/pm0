@@ -16,8 +16,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// TODO?: preserve stopped units
-
 const CLIClientDBFilename = "pm0_cli.db"
 const MaxRecvMessageSizeBytes = 8 * 8 * 1024 * 1024 // 8 MB
 
@@ -85,20 +83,24 @@ func main() {
 				Action:  contextProvider.Wraps(commands.List),
 			},
 			{
-				Name:        "stop",
-				Usage:       "Stop a unit",
-				Args:        true,
-				Action:      contextProvider.Wraps(commands.Stop),
-				Subcommands: []*cli.Command{createAllSubcommand(contextProvider.Wraps(commands.StopAll))},
-				Flags:       forceFlags,
+				Name:   "stop",
+				Usage:  "Stop a unit",
+				Args:   true,
+				Action: contextProvider.Wraps(commands.Stop),
+				Subcommands: []*cli.Command{
+					createAllSubcommand(contextProvider.Wraps(commands.StopAll)),
+				},
+				Flags: forceFlags,
 			},
 			{
-				Name:        "restart",
-				Usage:       "Restart a unit",
-				Args:        true,
-				Action:      contextProvider.Wraps(commands.Restart),
-				Subcommands: []*cli.Command{createAllSubcommand(contextProvider.Wraps(commands.RestartAll))},
-				Flags:       forceFlags,
+				Name:   "restart",
+				Usage:  "Restart a unit",
+				Args:   true,
+				Action: contextProvider.Wraps(commands.Restart),
+				Subcommands: []*cli.Command{
+					createAllSubcommand(contextProvider.Wraps(commands.RestartAll)),
+				},
+				Flags: forceFlags,
 			},
 			{
 				Name: "logs",
@@ -126,12 +128,14 @@ func main() {
 				},
 			},
 			{
-				Name:        "delete",
-				Usage:       "Delete units",
-				Aliases:     []string{"rm"},
-				Args:        true,
-				Action:      contextProvider.Wraps(commands.Delete),
-				Subcommands: []*cli.Command{createAllSubcommand(contextProvider.Wraps(commands.DeleteAll))},
+				Name:    "delete",
+				Usage:   "Delete units",
+				Aliases: []string{"rm"},
+				Args:    true,
+				Action:  contextProvider.Wraps(commands.Delete),
+				Subcommands: []*cli.Command{
+					createAllSubcommand(contextProvider.Wraps(commands.DeleteAll)),
+				},
 			},
 			{
 				Name:   "show",
@@ -142,6 +146,10 @@ func main() {
 			{
 				Name:   "setup",
 				Action: contextProvider.Wraps(commands.Setup),
+			},
+			{
+				Name:   "update",
+				Action: contextProvider.Wraps(commands.Update),
 			},
 		},
 	}
