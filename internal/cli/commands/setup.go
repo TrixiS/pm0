@@ -42,7 +42,7 @@ func Setup(ctx *command_context.CommandContext) error {
 		pm0.Printf("linked %s -> %s", exeFilepath, cliBinFilepath)
 	}
 
-	exeDirpath := path.Base(exeFilepath)
+	exeDirpath := path.Dir(exeFilepath)
 	daemonFilepath := path.Join(exeDirpath, "pm0_daemon")
 
 	if err := createServiceFile(exeDirpath, daemonFilepath); err != nil {
