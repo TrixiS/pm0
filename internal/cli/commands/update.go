@@ -94,7 +94,7 @@ func Update(ctx *command_context.CommandContext) error {
 			assetFile, err := os.OpenFile("./"+filename, os.O_CREATE|os.O_RDWR, 0o777)
 
 			if err != nil {
-				pm0.Printf("failed to open asset file %s: %v", assetFile.Name(), err)
+				pm0.Printf("failed to open asset file %s: %v", filename, err)
 				return
 			}
 
