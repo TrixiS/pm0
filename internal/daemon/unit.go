@@ -78,8 +78,8 @@ func (u *Unit) Stop(force bool) error {
 	u.IsStopped = true
 
 	if force {
-		return u.Command.Process.Signal(syscall.SIGTERM)
+		return u.Command.Process.Signal(syscall.SIGKILL)
 	}
 
-	return u.Command.Process.Signal(syscall.SIGINT)
+	return u.Command.Process.Signal(syscall.SIGTERM)
 }
