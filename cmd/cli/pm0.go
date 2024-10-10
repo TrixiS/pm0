@@ -147,10 +147,6 @@ func main() {
 				Name:   "setup",
 				Action: contextProvider.Wraps(commands.Setup),
 			},
-			{
-				Name:   "update",
-				Action: contextProvider.Wraps(commands.Update),
-			},
 		},
 	}
 
