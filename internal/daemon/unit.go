@@ -3,7 +3,6 @@ package daemon
 import (
 	"os"
 	"os/exec"
-	"syscall"
 	"time"
 
 	"github.com/TrixiS/pm0/internal/daemon/pb"
@@ -12,10 +11,10 @@ import (
 type UnitStatus uint32
 
 const (
-	RUNNING UnitStatus = 0
-	EXITED  UnitStatus = 1
-	FAILED  UnitStatus = 2
-	STOPPED UnitStatus = 3
+	UnitStatusRunning UnitStatus = 0
+	UnitStatusExited  UnitStatus = 1
+	UnitStatusFailed  UnitStatus = 2
+	UnitStatusStopped UnitStatus = 3
 )
 
 type UnitModel struct {
@@ -32,34 +31,34 @@ type Unit struct {
 	Command   *exec.Cmd
 	LogFile   *os.File
 	StartedAt time.Time
-	IsStopped bool
+	Cancel    func()
 }
 
-func (u Unit) GetStatus() UnitStatus {
-	if u.IsStopped {
-		return STOPPED
+func (u Unit) Status() UnitStatus {
+	if u.Cancel == nil {
+		return UnitStatusStopped
 	}
 
 	if u.Command.ProcessState == nil {
-		return RUNNING
+		return UnitStatusRunning
 	}
 
 	switch u.Command.ProcessState.ExitCode() {
 	case -1:
-		return STOPPED
+		return UnitStatusStopped
 	case 0:
-		return EXITED
+		return UnitStatusExited
 	default:
-		return FAILED
+		return UnitStatusFailed
 	}
 }
 
 func (u Unit) PB() *pb.Unit {
 	var pid *int32
 
-	unitStatus := u.GetStatus()
+	unitStatus := u.Status()
 
-	if unitStatus == RUNNING {
+	if unitStatus == UnitStatusRunning {
 		int32Pid := int32(u.Command.Process.Pid)
 		pid = &int32Pid
 	}
@@ -74,12 +73,11 @@ func (u Unit) PB() *pb.Unit {
 	}
 }
 
-func (u *Unit) Stop(force bool) error {
-	u.IsStopped = true
-
-	if force {
-		return u.Command.Process.Signal(syscall.SIGKILL)
+func (u *Unit) Stop() {
+	if u.Cancel == nil {
+		return
 	}
 
-	return u.Command.Process.Signal(syscall.SIGTERM)
+	u.Cancel()
+	u.Cancel = nil
 }

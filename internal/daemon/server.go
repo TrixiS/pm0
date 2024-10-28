@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/TrixiS/pm0/internal/daemon/pb"
@@ -19,15 +21,10 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-const LogFileFlag = os.O_CREATE | os.O_RDWR | os.O_APPEND
-const LogFilePerm = 0o660
-
-const LogsTailDefault uint64 = 32
-const LogsTailMax uint64 = 1000
-const LogsMaxBytes uint32 = 4 * 1024 * 1024 // 4 MB
-const LogsFollowInterval time.Duration = time.Second
-
-const FailRestartDelay time.Duration = time.Second * 5
+const (
+	logFilePerm                    = 0o660
+	failRestartDelay time.Duration = time.Second * 5
+)
 
 var emptyResponse = &emptypb.Empty{}
 
@@ -41,7 +38,8 @@ type DaemonServer struct {
 
 	Options DaemonServerOptions
 
-	units map[uint64]*Unit
+	units   map[uint64]*Unit
+	unitsMu sync.RWMutex
 }
 
 func NewDaemonServer(options DaemonServerOptions) *DaemonServer {
@@ -51,77 +49,122 @@ func NewDaemonServer(options DaemonServerOptions) *DaemonServer {
 	}
 }
 
-func (s DaemonServer) getUnitLogFilepath(unitID uint64) string {
+func (s *DaemonServer) getUnitLogFilepath(unitID uint64) string {
 	return path.Join(s.Options.LogsDirpath, fmt.Sprintf("%d.log", unitID))
 }
 
-func (s DaemonServer) openUnitLogFile(unitID uint64) (*os.File, error) {
+func (s *DaemonServer) openUnitLogFile(unitID uint64) (*os.File, error) {
+	const LogFileFlag = os.O_CREATE | os.O_RDWR | os.O_APPEND
+
 	logFilepath := s.getUnitLogFilepath(unitID)
-	return os.OpenFile(logFilepath, LogFileFlag, LogFilePerm)
+	return os.OpenFile(logFilepath, LogFileFlag, logFilePerm)
 }
 
 func (s *DaemonServer) watchUnit(unit *Unit) {
 	unit.Command.Wait()
 	unit.LogFile.Close()
 
-	time.Sleep(FailRestartDelay)
-
-	if unit.GetStatus() != FAILED {
+	if unit.Status() != UnitStatusFailed {
 		return
 	}
 
-	s.RestartUnit(unit.Model)
+	s.unitsMu.RLock()
+
+	if s.units[unit.Model.ID] == nil {
+		s.unitsMu.RUnlock()
+		return
+	}
+
+	s.unitsMu.RUnlock()
+
+	time.Sleep(failRestartDelay)
+	s.StartUnit(unit.Model)
 }
 
 func (s *DaemonServer) addUnit(unit *Unit) {
+	s.unitsMu.Lock()
 	s.units[unit.Model.ID] = unit
+	s.unitsMu.Unlock()
 	go s.watchUnit(unit)
 }
 
-func (s *DaemonServer) stopUnitsStream(unitIDs []uint64, force bool, stream pb.ProcessService_StopServer) error {
+func (s *DaemonServer) StartUnit(model UnitModel) (*Unit, error) {
+	logFile, err := s.openUnitLogFile(model.ID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	unitCtx, cancel := context.WithCancel(context.Background())
+	command := createUnitStartCommand(unitCtx, model.Bin, model.Args, model.CWD, logFile)
+
+	if err := command.Start(); err != nil {
+		cancel()
+		return nil, err
+	}
+
+	unit := &Unit{
+		Model:     model,
+		Command:   command,
+		LogFile:   logFile,
+		StartedAt: time.Now(),
+		Cancel:    cancel,
+	}
+
+	s.addUnit(unit)
+	return unit, nil
+}
+
+func (s *DaemonServer) stopUnitsStream(
+	unitIDs []uint64,
+	stream pb.ProcessService_StopServer,
+) error {
 	eg, _ := errgroup.WithContext(stream.Context())
 
 	for _, unitID := range unitIDs {
 		id := unitID
 
 		eg.Go(func() error {
-			u := s.units[id]
-			response := &pb.StopResponse{UnitId: id}
+			s.unitsMu.RLock()
+			unit := s.units[id]
+			s.unitsMu.RUnlock()
 
-			if u == nil {
+			response := pb.StopResponse{UnitId: id}
+
+			if unit == nil {
 				response.Error = fmt.Sprintf("unit %d not found", id)
-				return stream.Send(response)
+				return stream.Send(&response)
 			}
 
-			if u.GetStatus() != RUNNING {
-				u.IsStopped = true
-				response.Error = fmt.Sprintf("unit %s is not running", u.Model.Name)
-				response.Unit = u.PB()
-				return stream.Send(response)
+			if unit.Status() != UnitStatusRunning {
+				response.Error = fmt.Sprintf("unit %s is not running", unit.Model.Name)
+				response.Unit = unit.PB()
+				return stream.Send(&response)
 			}
 
-			if err := u.Stop(force); err != nil {
-				response.Error = err.Error()
-				response.Unit = u.PB()
-				return stream.Send(response)
-			}
-
-			response.Unit = u.PB()
-			return stream.Send(response)
+			unit.Stop()
+			response.Unit = unit.PB()
+			return stream.Send(&response)
 		})
 	}
 
 	return eg.Wait()
 }
 
-func (s *DaemonServer) restartUnitsStream(unitIDs []uint64, force bool, stream pb.ProcessService_RestartServer) error {
+func (s *DaemonServer) restartUnitsStream(
+	unitIDs []uint64,
+	stream pb.ProcessService_RestartServer,
+) error {
 	eg, _ := errgroup.WithContext(stream.Context())
 
 	for _, unitID := range unitIDs {
 		id := unitID
 
 		eg.Go(func() error {
+			s.unitsMu.RLock()
 			unit := s.units[id]
+			s.unitsMu.RUnlock()
+
 			response := &pb.StopResponse{UnitId: id}
 
 			if unit == nil {
@@ -129,21 +172,23 @@ func (s *DaemonServer) restartUnitsStream(unitIDs []uint64, force bool, stream p
 				return stream.Send(response)
 			}
 
-			if unit.GetStatus() == RUNNING {
-				if err := unit.Stop(force); err != nil {
-					response.Error = err.Error()
-					response.Unit = unit.PB()
-					return stream.Send(response)
-				}
+			if unit.Status() == UnitStatusRunning {
+				unit.Stop()
 			}
 
-			unitCopy, err := s.RestartUnit(unit.Model)
+			unitCopy, err := s.StartUnit(unit.Model)
 
 			if err != nil {
 				response.Error = err.Error()
 				response.Unit = unit.PB()
 				return stream.Send(response)
 			}
+
+			unit.Model.RestartsCount += 1
+			db := s.Options.DBFactory()
+			db.Update(&unit.Model)
+			db.Commit()
+			db.Close()
 
 			response.Unit = unitCopy.PB()
 			return stream.Send(response)
@@ -153,7 +198,10 @@ func (s *DaemonServer) restartUnitsStream(unitIDs []uint64, force bool, stream p
 	return eg.Wait()
 }
 
-func (s *DaemonServer) deleteUnitsStream(unitIDs []uint64, stream pb.ProcessService_DeleteServer) error {
+func (s *DaemonServer) deleteUnitsStream(
+	unitIDs []uint64,
+	stream pb.ProcessService_DeleteServer,
+) error {
 	db := s.Options.DBFactory()
 	eg, _ := errgroup.WithContext(stream.Context())
 
@@ -161,7 +209,9 @@ func (s *DaemonServer) deleteUnitsStream(unitIDs []uint64, stream pb.ProcessServ
 		id := unitID
 
 		eg.Go(func() error {
+			s.unitsMu.RLock()
 			unit := s.units[id]
+			s.unitsMu.RUnlock()
 
 			if unit == nil {
 				response := &pb.StopResponse{UnitId: id}
@@ -169,8 +219,10 @@ func (s *DaemonServer) deleteUnitsStream(unitIDs []uint64, stream pb.ProcessServ
 				return stream.Send(response)
 			}
 
-			unit.Stop(true)
+			unit.Stop()
+			s.unitsMu.Lock()
 			delete(s.units, unit.Model.ID)
+			s.unitsMu.Unlock()
 			db.DeleteStruct(&unit.Model)
 
 			return stream.Send(&pb.StopResponse{
@@ -189,6 +241,9 @@ func (s *DaemonServer) deleteUnitsStream(unitIDs []uint64, stream pb.ProcessServ
 }
 
 func (s *DaemonServer) filterUnitIDs(except []uint64) []uint64 {
+	s.unitsMu.RLock()
+	defer s.unitsMu.RUnlock()
+
 	unitIDs := make([]uint64, 0, len(s.units))
 
 unitLoop:
@@ -205,38 +260,10 @@ unitLoop:
 	return unitIDs
 }
 
-func (s *DaemonServer) RestartUnit(model UnitModel) (*Unit, error) {
-	logFile, err := s.openUnitLogFile(model.ID)
-
-	if err != nil {
-		return nil, err
-	}
-
-	command := createUnitStartCommand(model.Bin, model.Args, model.CWD, logFile)
-
-	if err := command.Start(); err != nil {
-		return nil, err
-	}
-
-	model.RestartsCount += 1
-
-	db := s.Options.DBFactory()
-	db.Update(&model)
-	db.Commit()
-	db.Close()
-
-	unit := &Unit{
-		Model:     model,
-		Command:   command,
-		LogFile:   logFile,
-		StartedAt: time.Now(),
-	}
-
-	s.addUnit(unit)
-	return unit, nil
-}
-
-func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb.StartResponse, error) {
+func (s *DaemonServer) Start(
+	ctx context.Context,
+	request *pb.StartRequest,
+) (*pb.StartResponse, error) {
 	db := s.Options.DBFactory()
 	defer db.Close()
 
@@ -259,32 +286,15 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	logFile, err := s.openUnitLogFile(unitModel.ID)
+	unit, err := s.StartUnit(unitModel)
 
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	command := createUnitStartCommand(request.Bin, request.Args, request.Cwd, logFile)
-
-	if err = command.Start(); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if err := tx.Commit(); err != nil {
-		command.Process.Kill()
-		command.Process.Release()
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-
-	unit := Unit{
-		Model:     unitModel,
-		Command:   command,
-		LogFile:   logFile,
-		StartedAt: time.Now(),
-	}
-
-	s.addUnit(&unit)
 
 	response := pb.StartResponse{
 		Unit: unit.PB(),
@@ -294,46 +304,67 @@ func (s *DaemonServer) Start(ctx context.Context, request *pb.StartRequest) (*pb
 }
 
 func (s *DaemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResponse, error) {
-	units := make([]*pb.Unit, len(s.units))
-	unitIdx := 0
+	s.unitsMu.RLock()
+	defer s.unitsMu.RUnlock()
+
+	pbUnits := make([]*pb.Unit, len(s.units))
+	idx := 0
 
 	for _, unit := range s.units {
-		units[unitIdx] = unit.PB()
-		unitIdx += 1
+		pbUnits[idx] = unit.PB()
+		idx++
 	}
 
 	response := pb.ListResponse{
-		Units: units,
+		Units: pbUnits,
 	}
 
 	return &response, nil
 }
 
 func (s *DaemonServer) Stop(request *pb.StopRequest, stream pb.ProcessService_StopServer) error {
-	return s.stopUnitsStream(request.UnitIds, request.Force, stream)
+	return s.stopUnitsStream(request.UnitIds, stream)
 }
 
-func (s *DaemonServer) StopAll(request *pb.ExceptRequest, stream pb.ProcessService_StopAllServer) error {
-	return s.stopUnitsStream(s.filterUnitIDs(request.UnitIds), true, stream)
+func (s *DaemonServer) StopAll(
+	request *pb.ExceptRequest,
+	stream pb.ProcessService_StopAllServer,
+) error {
+	return s.stopUnitsStream(s.filterUnitIDs(request.UnitIds), stream)
 }
 
-func (s *DaemonServer) Restart(request *pb.StopRequest, stream pb.ProcessService_RestartServer) error {
-	return s.restartUnitsStream(request.UnitIds, request.Force, stream)
+func (s *DaemonServer) Restart(
+	request *pb.StopRequest,
+	stream pb.ProcessService_RestartServer,
+) error {
+	return s.restartUnitsStream(request.UnitIds, stream)
 }
 
-func (s *DaemonServer) RestartAll(request *pb.ExceptRequest, stream pb.ProcessService_RestartAllServer) error {
-	return s.restartUnitsStream(s.filterUnitIDs(request.UnitIds), true, stream)
+func (s *DaemonServer) RestartAll(
+	request *pb.ExceptRequest,
+	stream pb.ProcessService_RestartAllServer,
+) error {
+	return s.restartUnitsStream(s.filterUnitIDs(request.UnitIds), stream)
 }
 
 func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_LogsServer) error {
+	const (
+		LogsTailDefault    uint64 = 32
+		LogsTailMax        uint64 = 1000
+		LogsMaxBytes       uint32 = 4 * 1024 * 1024 // 4 MB
+		LogsFollowInterval        = time.Second
+	)
+
+	s.unitsMu.RLock()
 	unit := s.units[request.UnitId]
+	s.unitsMu.RUnlock()
 
 	if unit == nil {
 		return status.Error(codes.NotFound, "requested unit not found")
 	}
 
 	logFilepath := s.getUnitLogFilepath(unit.Model.ID)
-	logFile, err := os.OpenFile(logFilepath, os.O_RDONLY, LogFilePerm)
+	logFile, err := os.OpenFile(logFilepath, os.O_RDONLY, logFilePerm)
 
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
@@ -450,16 +481,27 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 	}
 }
 
-func (s *DaemonServer) Delete(request *pb.StopRequest, stream pb.ProcessService_DeleteServer) error {
+func (s *DaemonServer) Delete(
+	request *pb.StopRequest,
+	stream pb.ProcessService_DeleteServer,
+) error {
 	return s.deleteUnitsStream(request.UnitIds, stream)
 }
 
-func (s *DaemonServer) DeleteAll(request *pb.ExceptRequest, stream pb.ProcessService_DeleteAllServer) error {
+func (s *DaemonServer) DeleteAll(
+	request *pb.ExceptRequest,
+	stream pb.ProcessService_DeleteAllServer,
+) error {
 	return s.deleteUnitsStream(s.filterUnitIDs(request.UnitIds), stream)
 }
 
-func (s *DaemonServer) Show(ctx context.Context, request *pb.ShowRequest) (*pb.ShowResponse, error) {
+func (s *DaemonServer) Show(
+	ctx context.Context,
+	request *pb.ShowRequest,
+) (*pb.ShowResponse, error) {
+	s.unitsMu.RLock()
 	unit := s.units[request.UnitId]
+	s.unitsMu.RUnlock()
 
 	if unit == nil {
 		return nil, status.Errorf(codes.NotFound, "unit %d not found", request.UnitId)
@@ -475,7 +517,13 @@ func (s *DaemonServer) Show(ctx context.Context, request *pb.ShowRequest) (*pb.S
 	return &response, nil
 }
 
-func (s *DaemonServer) LogsClear(ctx context.Context, request *pb.LogsClearRequest) (*emptypb.Empty, error) {
+func (s *DaemonServer) LogsClear(
+	ctx context.Context,
+	request *pb.LogsClearRequest,
+) (*emptypb.Empty, error) {
+	s.unitsMu.RLock()
+	defer s.unitsMu.RUnlock()
+
 	for _, id := range request.UnitIds {
 		unitID := id
 
@@ -490,4 +538,18 @@ func (s *DaemonServer) LogsClear(ctx context.Context, request *pb.LogsClearReque
 	}
 
 	return emptyResponse, nil
+}
+
+func createUnitStartCommand(
+	ctx context.Context,
+	bin string,
+	args []string,
+	cwd string,
+	logFile *os.File,
+) *exec.Cmd {
+	command := exec.CommandContext(ctx, bin, args...)
+	command.Dir = cwd
+	command.Stdout = logFile
+	command.Stderr = logFile
+	return command
 }

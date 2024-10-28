@@ -46,7 +46,9 @@ func main() {
 		return db
 	}
 
-	daemonServer := daemon.NewDaemonServer(daemon.DaemonServerOptions{LogsDirpath: logsDirpath, DBFactory: dbFactory})
+	daemonServer := daemon.NewDaemonServer(
+		daemon.DaemonServerOptions{LogsDirpath: logsDirpath, DBFactory: dbFactory},
+	)
 
 	db := dbFactory()
 	var unitModels []daemon.UnitModel
@@ -65,10 +67,10 @@ func main() {
 
 		go func() {
 			defer wg.Done()
-			_, err := daemonServer.RestartUnit(model)
+			_, err := daemonServer.StartUnit(model)
 
 			if err != nil {
-				log.Println(err.Error())
+				log.Println("start unit", model.ID, err.Error())
 			}
 		}()
 	}

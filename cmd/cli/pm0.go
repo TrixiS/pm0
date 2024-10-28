@@ -16,8 +16,10 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-const CLIClientDBFilename = "pm0_cli.db"
-const MaxRecvMessageSizeBytes = 8 * 8 * 1024 * 1024 // 8 MB
+const (
+	CLIClientDBFilename     = "pm0_cli.db"
+	MaxRecvMessageSizeBytes = 8 * 8 * 1024 * 1024 // 8 MB
+)
 
 func main() {
 	pm0Dirpath, err := utils.GetPM0Dirpath()
@@ -56,8 +58,6 @@ func main() {
 		},
 	}
 
-	forceFlags := []cli.Flag{&cli.BoolFlag{Name: "force", Required: false}}
-
 	app := &cli.App{
 		Name:  "pm0",
 		Usage: "CLI client for PM0 daemon",
@@ -90,7 +90,6 @@ func main() {
 				Subcommands: []*cli.Command{
 					createAllSubcommand(contextProvider.Wraps(commands.StopAll)),
 				},
-				Flags: forceFlags,
 			},
 			{
 				Name:   "restart",
@@ -100,7 +99,6 @@ func main() {
 				Subcommands: []*cli.Command{
 					createAllSubcommand(contextProvider.Wraps(commands.RestartAll)),
 				},
-				Flags: forceFlags,
 			},
 			{
 				Name: "logs",

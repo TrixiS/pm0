@@ -34,7 +34,6 @@ message ListResponse {
 
 message StopRequest {
     repeated uint64 unit_ids = 1;
-    bool force = 2;
 }
 
 message StopResponse {

@@ -32,7 +32,7 @@ func FormatNillablePointer[T any](ptr *T) string {
 }
 
 func FormatUnitUptime(startedAt int64, status daemon.UnitStatus) string {
-	if status != daemon.RUNNING {
+	if status != daemon.UnitStatusRunning {
 		return tableNoneString
 	}
 
@@ -44,13 +44,13 @@ func FormatUnitUptime(startedAt int64, status daemon.UnitStatus) string {
 
 func FormatUnitStatus(unitStatus daemon.UnitStatus) string {
 	switch unitStatus {
-	case daemon.RUNNING:
+	case daemon.UnitStatusRunning:
 		return runningStatusString
-	case daemon.EXITED:
+	case daemon.UnitStatusExited:
 		return exitedStatusString
-	case daemon.FAILED:
+	case daemon.UnitStatusFailed:
 		return failedStatusString
-	case daemon.STOPPED:
+	case daemon.UnitStatusStopped:
 		return stoppedStatusString
 	default:
 		return "Unknown"

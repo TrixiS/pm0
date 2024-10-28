@@ -10,7 +10,8 @@ import (
 	"github.com/TrixiS/pm0/internal/cli/command_context"
 )
 
-const serviceFileTemplate string = `[Unit]
+const (
+	serviceFileTemplate string = `[Unit]
 Description="PM0 Daemon"
 
 [Service]
@@ -25,9 +26,10 @@ RestartSec=3
 [Install]
 WantedBy=multi-user.target`
 
-const daemonServiceFilename string = "pm0_daemon.service"
-const daemonServiceFilepath string = "/etc/systemd/system/pm0_daemon.service"
-const cliBinFilepath string = "/usr/local/bin/pm0"
+	daemonServiceFilename string = "pm0_daemon.service"
+	daemonServiceFilepath string = "/etc/systemd/system/pm0_daemon.service"
+	cliBinFilepath        string = "/usr/local/bin/pm0"
+)
 
 func Setup(ctx *command_context.CommandContext) error {
 	exeFilepath, err := os.Executable()
