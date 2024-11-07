@@ -54,10 +54,9 @@ func (s *DaemonServer) getUnitLogFilepath(unitID uint64) string {
 }
 
 func (s *DaemonServer) openUnitLogFile(unitID uint64) (*os.File, error) {
-	const LogFileFlag = os.O_CREATE | os.O_RDWR | os.O_APPEND
-
+	const logFileFlag = os.O_CREATE | os.O_RDWR | os.O_APPEND
 	logFilepath := s.getUnitLogFilepath(unitID)
-	return os.OpenFile(logFilepath, LogFileFlag, logFilePerm)
+	return os.OpenFile(logFilepath, logFileFlag, logFilePerm)
 }
 
 func (s *DaemonServer) watchUnit(unit *Unit) {
