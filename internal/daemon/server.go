@@ -95,7 +95,7 @@ func (s *DaemonServer) StartUnit(model UnitModel) (*Unit, error) {
 	}
 
 	unitCtx, cancel := context.WithCancel(context.Background())
-	command := createUnitStartCommand(unitCtx, model.Bin, model.Args, model.CWD, logFile)
+	command := createUnitStartCommand(unitCtx, &model, logFile)
 
 	if err := command.Start(); err != nil {
 		cancel()
@@ -136,7 +136,12 @@ func (s *DaemonServer) stopUnitsStream(
 			}
 
 			if unit.Status() != UnitStatusRunning {
-				response.Error = fmt.Sprintf("unit %s is not running", unit.Model.Name)
+				response.Error = fmt.Sprintf(
+					"unit %s (%d) is not running",
+					unit.Model.Name,
+					unit.Model.ID,
+				)
+
 				response.Unit = unit.PB()
 				return stream.Send(&response)
 			}
@@ -181,7 +186,6 @@ func (s *DaemonServer) restartUnitsStream(
 			}
 
 			unit.Model.RestartsCount += 1
-
 			db.Update(&unit.Model)
 
 			unitCopy, err := s.StartUnit(unit.Model)
@@ -306,9 +310,6 @@ func (s *DaemonServer) Start(
 }
 
 func (s *DaemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResponse, error) {
-	s.unitsMu.RLock()
-	defer s.unitsMu.RUnlock()
-
 	pbUnits := make([]*pb.Unit, len(s.units))
 	idx := 0
 
@@ -362,7 +363,7 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 	s.unitsMu.RUnlock()
 
 	if unit == nil {
-		return status.Error(codes.NotFound, "requested unit not found")
+		return status.Errorf(codes.NotFound, "unit %d not found", request.UnitId)
 	}
 
 	logFilepath := s.getUnitLogFilepath(unit.Model.ID)
@@ -523,9 +524,6 @@ func (s *DaemonServer) LogsClear(
 	ctx context.Context,
 	request *pb.LogsClearRequest,
 ) (*emptypb.Empty, error) {
-	s.unitsMu.RLock()
-	defer s.unitsMu.RUnlock()
-
 	for _, id := range request.UnitIds {
 		unitID := id
 
@@ -542,15 +540,9 @@ func (s *DaemonServer) LogsClear(
 	return emptyResponse, nil
 }
 
-func createUnitStartCommand(
-	ctx context.Context,
-	bin string,
-	args []string,
-	cwd string,
-	logFile *os.File,
-) *exec.Cmd {
-	command := exec.CommandContext(ctx, bin, args...)
-	command.Dir = cwd
+func createUnitStartCommand(ctx context.Context, model *UnitModel, logFile *os.File) *exec.Cmd {
+	command := exec.CommandContext(ctx, model.Bin, model.Args...)
+	command.Dir = model.CWD
 	command.Stdout = logFile
 	command.Stderr = logFile
 	return command
