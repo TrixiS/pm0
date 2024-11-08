@@ -154,6 +154,11 @@ func (s *DaemonServer) restartUnitsStream(
 	unitIDs []uint64,
 	stream pb.ProcessService_RestartServer,
 ) error {
+	db := s.Options.DBFactory()
+
+	defer db.Commit()
+	defer db.Close()
+
 	eg, _ := errgroup.WithContext(stream.Context())
 
 	for _, unitID := range unitIDs {
@@ -175,6 +180,10 @@ func (s *DaemonServer) restartUnitsStream(
 				unit.Stop()
 			}
 
+			unit.Model.RestartsCount += 1
+
+			db.Update(&unit.Model)
+
 			unitCopy, err := s.StartUnit(unit.Model)
 
 			if err != nil {
@@ -182,12 +191,6 @@ func (s *DaemonServer) restartUnitsStream(
 				response.Unit = unit.PB()
 				return stream.Send(response)
 			}
-
-			unit.Model.RestartsCount += 1
-			db := s.Options.DBFactory()
-			db.Update(&unit.Model)
-			db.Commit()
-			db.Close()
 
 			response.Unit = unitCopy.PB()
 			return stream.Send(response)
@@ -202,6 +205,10 @@ func (s *DaemonServer) deleteUnitsStream(
 	stream pb.ProcessService_DeleteServer,
 ) error {
 	db := s.Options.DBFactory()
+
+	defer db.Commit()
+	defer db.Close()
+
 	eg, _ := errgroup.WithContext(stream.Context())
 
 	for _, unitID := range unitIDs {
@@ -219,10 +226,11 @@ func (s *DaemonServer) deleteUnitsStream(
 			}
 
 			unit.Stop()
+			db.DeleteStruct(&unit.Model)
+
 			s.unitsMu.Lock()
 			delete(s.units, unit.Model.ID)
 			s.unitsMu.Unlock()
-			db.DeleteStruct(&unit.Model)
 
 			return stream.Send(&pb.StopResponse{
 				UnitId: id,
@@ -231,12 +239,7 @@ func (s *DaemonServer) deleteUnitsStream(
 		})
 	}
 
-	err := eg.Wait()
-
-	db.Commit()
-	db.Close()
-
-	return err
+	return eg.Wait()
 }
 
 func (s *DaemonServer) filterUnitIDs(except []uint64) []uint64 {
