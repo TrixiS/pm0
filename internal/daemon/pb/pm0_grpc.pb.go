@@ -31,6 +31,7 @@ const (
 	ProcessService_DeleteAll_FullMethodName  = "/pm0.ProcessService/DeleteAll"
 	ProcessService_Show_FullMethodName       = "/pm0.ProcessService/Show"
 	ProcessService_LogsClear_FullMethodName  = "/pm0.ProcessService/LogsClear"
+	ProcessService_Rename_FullMethodName     = "/pm0.ProcessService/Rename"
 )
 
 // ProcessServiceClient is the client API for ProcessService service.
@@ -48,6 +49,7 @@ type ProcessServiceClient interface {
 	DeleteAll(ctx context.Context, in *ExceptRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StopResponse], error)
 	Show(ctx context.Context, in *ShowRequest, opts ...grpc.CallOption) (*ShowResponse, error)
 	LogsClear(ctx context.Context, in *LogsClearRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Rename(ctx context.Context, in *RenameRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type processServiceClient struct {
@@ -231,6 +233,16 @@ func (c *processServiceClient) LogsClear(ctx context.Context, in *LogsClearReque
 	return out, nil
 }
 
+func (c *processServiceClient) Rename(ctx context.Context, in *RenameRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ProcessService_Rename_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ProcessServiceServer is the server API for ProcessService service.
 // All implementations must embed UnimplementedProcessServiceServer
 // for forward compatibility.
@@ -246,6 +258,7 @@ type ProcessServiceServer interface {
 	DeleteAll(*ExceptRequest, grpc.ServerStreamingServer[StopResponse]) error
 	Show(context.Context, *ShowRequest) (*ShowResponse, error)
 	LogsClear(context.Context, *LogsClearRequest) (*emptypb.Empty, error)
+	Rename(context.Context, *RenameRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedProcessServiceServer()
 }
 
@@ -288,6 +301,9 @@ func (UnimplementedProcessServiceServer) Show(context.Context, *ShowRequest) (*S
 }
 func (UnimplementedProcessServiceServer) LogsClear(context.Context, *LogsClearRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LogsClear not implemented")
+}
+func (UnimplementedProcessServiceServer) Rename(context.Context, *RenameRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Rename not implemented")
 }
 func (UnimplementedProcessServiceServer) mustEmbedUnimplementedProcessServiceServer() {}
 func (UnimplementedProcessServiceServer) testEmbeddedByValue()                        {}
@@ -459,6 +475,24 @@ func _ProcessService_LogsClear_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ProcessService_Rename_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RenameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProcessServiceServer).Rename(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProcessService_Rename_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProcessServiceServer).Rename(ctx, req.(*RenameRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ProcessService_ServiceDesc is the grpc.ServiceDesc for ProcessService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -481,6 +515,10 @@ var ProcessService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "LogsClear",
 			Handler:    _ProcessService_LogsClear_Handler,
+		},
+		{
+			MethodName: "Rename",
+			Handler:    _ProcessService_Rename_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

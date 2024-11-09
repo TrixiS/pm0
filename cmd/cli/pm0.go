@@ -136,6 +136,12 @@ func main() {
 				},
 			},
 			{
+				Name:   "rename",
+				Usage:  "Rename a unit",
+				Args:   true,
+				Action: contextProvider.Wraps(commands.Rename),
+			},
+			{
 				Name:   "show",
 				Usage:  "Show unit info",
 				Args:   true,

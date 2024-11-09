@@ -12,13 +12,13 @@ import (
 )
 
 func Logs(ctx *command_context.CommandContext) error {
+	unitID, err := pm0.ParseStringUnitID(ctx.CLIContext.Args().First())
+
+	if err != nil {
+		return err
+	}
+
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		unitID, err := pm0.ParseStringUnitID(ctx.CLIContext.Args().First())
-
-		if err != nil {
-			return err
-		}
-
 		stream, err := client.Logs(
 			ctx.CLIContext.Context,
 			&pb.LogsRequest{

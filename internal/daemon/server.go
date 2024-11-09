@@ -21,8 +21,6 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-// TODO: rename command
-
 const (
 	logFilePerm                    = 0o660
 	failRestartDelay time.Duration = time.Second * 5
@@ -540,6 +538,26 @@ func (s *DaemonServer) LogsClear(
 			os.Truncate(logFilepath, 0)
 		}()
 	}
+
+	return emptyResponse, nil
+}
+
+func (s *DaemonServer) Rename(
+	ctx context.Context,
+	request *pb.RenameRequest,
+) (*emptypb.Empty, error) {
+	unit := s.units[request.UnitId]
+
+	if unit == nil {
+		return nil, status.Errorf(codes.NotFound, "unit %d not found", request.UnitId)
+	}
+
+	unit.Model.Name = request.Name
+
+	db := s.Options.DBFactory()
+	db.Update(&unit.Model)
+	db.Commit()
+	db.Close()
 
 	return emptyResponse, nil
 }
