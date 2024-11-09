@@ -21,6 +21,8 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+// TODO: rename command
+
 const (
 	logFilePerm                    = 0o660
 	failRestartDelay time.Duration = time.Second * 5
@@ -80,13 +82,6 @@ func (s *DaemonServer) watchUnit(unit *Unit) {
 	s.StartUnit(unit.Model)
 }
 
-func (s *DaemonServer) addUnit(unit *Unit) {
-	s.unitsMu.Lock()
-	s.units[unit.Model.ID] = unit
-	s.unitsMu.Unlock()
-	go s.watchUnit(unit)
-}
-
 func (s *DaemonServer) StartUnit(model UnitModel) (*Unit, error) {
 	logFile, err := s.openUnitLogFile(model.ID)
 
@@ -110,7 +105,12 @@ func (s *DaemonServer) StartUnit(model UnitModel) (*Unit, error) {
 		Cancel:    cancel,
 	}
 
-	s.addUnit(unit)
+	s.unitsMu.Lock()
+	s.units[unit.Model.ID] = unit
+	s.unitsMu.Unlock()
+
+	go s.watchUnit(unit)
+
 	return unit, nil
 }
 
@@ -299,6 +299,10 @@ func (s *DaemonServer) Start(
 	}
 
 	if err := tx.Commit(); err != nil {
+		unit.Stop()
+		s.unitsMu.Lock()
+		delete(s.units, unit.Model.ID)
+		s.unitsMu.Unlock()
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
