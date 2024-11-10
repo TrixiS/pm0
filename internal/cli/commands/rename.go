@@ -19,7 +19,7 @@ func Rename(ctx *command_context.CommandContext) error {
 	name := args.Get(1)
 
 	if name == "" {
-		return fmt.Errorf("provide the name with the second argument")
+		return fmt.Errorf("provide a new name with the second argument")
 	}
 
 	err = ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
