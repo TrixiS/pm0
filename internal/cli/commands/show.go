@@ -5,21 +5,21 @@ import (
 
 	pm0 "github.com/TrixiS/pm0/internal/cli"
 
-	"github.com/TrixiS/pm0/internal/cli/command_context"
+	"github.com/TrixiS/pm0/internal/cli/command"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 )
 
-func Show(ctx *command_context.CommandContext) error {
+func Show(ctx *command.Context) error {
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		unitID, err := pm0.ParseStringUnitID(ctx.CLIContext.Args().First())
+		unitID, err := pm0.ParseStringUnitID(ctx.CLI.Args().First())
 
 		if err != nil {
 			return err
 		}
 
-		response, err := client.Show(ctx.CLIContext.Context, &pb.ShowRequest{UnitId: unitID})
+		response, err := client.Show(ctx.CLI.Context, &pb.ShowRequest{UnitId: unitID})
 
 		if err != nil {
 			return err

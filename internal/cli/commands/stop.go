@@ -5,19 +5,19 @@ import (
 	"io"
 
 	pm0 "github.com/TrixiS/pm0/internal/cli"
-	"github.com/TrixiS/pm0/internal/cli/command_context"
+	"github.com/TrixiS/pm0/internal/cli/command"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
 
-func Stop(ctx *command_context.CommandContext) error {
+func Stop(ctx *command.Context) error {
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		unitIDs, err := pm0.ParseUnitIDsFromArgs(ctx.CLIContext.Args().Slice())
+		unitIDs, err := pm0.ParseUnitIDsFromArgs(ctx.CLI.Args().Slice())
 
 		if err != nil {
 			return err
 		}
 
-		stream, err := client.Stop(ctx.CLIContext.Context, &pb.StopRequest{UnitIds: unitIDs})
+		stream, err := client.Stop(ctx.CLI.Context, &pb.StopRequest{UnitIds: unitIDs})
 
 		if err != nil {
 			return err
@@ -27,10 +27,10 @@ func Stop(ctx *command_context.CommandContext) error {
 	})
 }
 
-func StopAll(ctx *command_context.CommandContext) error {
+func StopAll(ctx *command.Context) error {
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		stream, err := client.StopAll(ctx.CLIContext.Context, &pb.ExceptRequest{
-			UnitIds: ctx.CLIContext.Uint64Slice("except"),
+		stream, err := client.StopAll(ctx.CLI.Context, &pb.ExceptRequest{
+			UnitIds: ctx.CLI.Uint64Slice("except"),
 		})
 
 		if err != nil {

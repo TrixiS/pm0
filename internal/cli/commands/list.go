@@ -4,16 +4,16 @@ import (
 	"os"
 
 	pm0 "github.com/TrixiS/pm0/internal/cli"
-	"github.com/TrixiS/pm0/internal/cli/command_context"
+	"github.com/TrixiS/pm0/internal/cli/command"
 	"github.com/TrixiS/pm0/internal/daemon"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 )
 
-func List(ctx *command_context.CommandContext) error {
+func List(ctx *command.Context) error {
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		response, err := client.List(ctx.CLIContext.Context, nil)
+		response, err := client.List(ctx.CLI.Context, nil)
 
 		if err != nil {
 			return err

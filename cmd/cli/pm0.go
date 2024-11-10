@@ -6,7 +6,7 @@ import (
 	"path"
 
 	pm0 "github.com/TrixiS/pm0/internal/cli"
-	"github.com/TrixiS/pm0/internal/cli/command_context"
+	"github.com/TrixiS/pm0/internal/cli/command"
 	"github.com/TrixiS/pm0/internal/cli/commands"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 	"github.com/TrixiS/pm0/internal/utils"
@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	CLIClientDBFilename     = "pm0_cli.db"
-	MaxRecvMessageSizeBytes = 8 * 8 * 1024 * 1024 // 8 MB
+	cliClientDBFilename     = "pm0_cli.db"
+	maxRecvMessageSizeBytes = 8 * 1024 * 1024
 )
 
 func main() {
@@ -28,9 +28,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dbFilepath := path.Join(pm0Dirpath, CLIClientDBFilename)
+	dbFilepath := path.Join(pm0Dirpath, cliClientDBFilename)
 
-	contextProvider := &command_context.CommandContextProvider{
+	contextProvider := command.ContextProvider{
 		DBFactory: func() *storm.DB {
 			db, err := storm.Open(dbFilepath)
 
@@ -41,11 +41,11 @@ func main() {
 			return db
 		},
 		WithClient: func(f func(pb.ProcessServiceClient) error) error {
-			conn, err := grpc.Dial(
+			conn, err := grpc.NewClient(
 				"localhost:7777",
 				grpc.WithTransportCredentials(insecure.NewCredentials()),
-				grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(MaxRecvMessageSizeBytes)),
-			) // TODO: get host from somewhere (env/config)
+				grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxRecvMessageSizeBytes)),
+			) // TODO: get address from somewhere (env/args)
 
 			if err != nil {
 				log.Fatalf("grpc dial: %v", err)

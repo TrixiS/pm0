@@ -11,15 +11,17 @@ import (
 
 const tableNoneString = "None"
 
-var pm0OutputPrefix = text.FgHiCyan.Sprint("[PM0] ")
-var runningStatusString = text.FgGreen.Sprint("Running")
-var exitedStatusString = text.FgWhite.Sprint("Exited")
-var failedStatusString = text.FgRed.Sprint("Failed")
-var stoppedStatusString = text.FgYellow.Sprint("Stopped")
+var (
+	pm0OutputPrefix     = text.FgHiCyan.Sprint("[PM0] ")
+	runningStatusString = text.FgGreen.Sprint("Running")
+	exitedStatusString  = text.FgWhite.Sprint("Exited")
+	failedStatusString  = text.FgRed.Sprint("Failed")
+	stoppedStatusString = text.FgYellow.Sprint("Stopped")
+)
 
 var ErrNoIdent = errors.New("provide at least one unit identifier (id or name)")
 
-func Printf(format string, args ...interface{}) {
+func Printf(format string, args ...any) {
 	fmt.Printf(pm0OutputPrefix+format+"\n", args...)
 }
 

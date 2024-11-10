@@ -5,19 +5,19 @@ import (
 	"io"
 
 	pm0 "github.com/TrixiS/pm0/internal/cli"
-	"github.com/TrixiS/pm0/internal/cli/command_context"
+	"github.com/TrixiS/pm0/internal/cli/command"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
 
-func Delete(ctx *command_context.CommandContext) error {
+func Delete(ctx *command.Context) error {
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		unitIDs, err := pm0.ParseUnitIDsFromArgs(ctx.CLIContext.Args().Slice())
+		unitIDs, err := pm0.ParseUnitIDsFromArgs(ctx.CLI.Args().Slice())
 
 		if err != nil {
 			return err
 		}
 
-		stream, err := client.Delete(ctx.CLIContext.Context, &pb.StopRequest{UnitIds: unitIDs})
+		stream, err := client.Delete(ctx.CLI.Context, &pb.StopRequest{UnitIds: unitIDs})
 
 		if err != nil {
 			return err
@@ -27,11 +27,11 @@ func Delete(ctx *command_context.CommandContext) error {
 	})
 }
 
-func DeleteAll(ctx *command_context.CommandContext) error {
+func DeleteAll(ctx *command.Context) error {
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
 		stream, err := client.DeleteAll(
-			ctx.CLIContext.Context,
-			&pb.ExceptRequest{UnitIds: ctx.CLIContext.Uint64Slice("except")},
+			ctx.CLI.Context,
+			&pb.ExceptRequest{UnitIds: ctx.CLI.Uint64Slice("except")},
 		)
 
 		if err != nil {

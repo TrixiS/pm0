@@ -7,12 +7,12 @@ import (
 	"strings"
 
 	pm0 "github.com/TrixiS/pm0/internal/cli"
-	"github.com/TrixiS/pm0/internal/cli/command_context"
+	"github.com/TrixiS/pm0/internal/cli/command"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
 
-func Logs(ctx *command_context.CommandContext) error {
-	unitID, err := pm0.ParseStringUnitID(ctx.CLIContext.Args().First())
+func Logs(ctx *command.Context) error {
+	unitID, err := pm0.ParseStringUnitID(ctx.CLI.Args().First())
 
 	if err != nil {
 		return err
@@ -20,11 +20,11 @@ func Logs(ctx *command_context.CommandContext) error {
 
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
 		stream, err := client.Logs(
-			ctx.CLIContext.Context,
+			ctx.CLI.Context,
 			&pb.LogsRequest{
 				UnitId: unitID,
-				Follow: ctx.CLIContext.Bool("follow"),
-				Lines:  ctx.CLIContext.Uint64("lines"),
+				Follow: ctx.CLI.Bool("follow"),
+				Lines:  ctx.CLI.Uint64("lines"),
 			},
 		)
 

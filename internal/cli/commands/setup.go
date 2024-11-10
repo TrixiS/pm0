@@ -7,7 +7,7 @@ import (
 	"path"
 
 	pm0 "github.com/TrixiS/pm0/internal/cli"
-	"github.com/TrixiS/pm0/internal/cli/command_context"
+	"github.com/TrixiS/pm0/internal/cli/command"
 )
 
 const (
@@ -31,7 +31,7 @@ WantedBy=multi-user.target`
 	cliBinFilepath        string = "/usr/local/bin/pm0"
 )
 
-func Setup(ctx *command_context.CommandContext) error {
+func Setup(ctx *command.Context) error {
 	exeFilepath, err := os.Executable()
 
 	if err != nil {
@@ -51,14 +51,14 @@ func Setup(ctx *command_context.CommandContext) error {
 		return fmt.Errorf("create service file: %w", err)
 	}
 
-	err = exec.CommandContext(ctx.CLIContext.Context, "systemctl", "enable", daemonServiceFilename).
+	err = exec.CommandContext(ctx.CLI.Context, "systemctl", "enable", daemonServiceFilename).
 		Run()
 
 	if err != nil {
 		return fmt.Errorf("failed to enable daemon service: %w", err)
 	}
 
-	err = exec.CommandContext(ctx.CLIContext.Context, "systemctl", "start", daemonServiceFilename).
+	err = exec.CommandContext(ctx.CLI.Context, "systemctl", "start", daemonServiceFilename).
 		Run()
 
 	if err != nil {

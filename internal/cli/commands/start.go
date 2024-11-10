@@ -6,12 +6,12 @@ import (
 	"path"
 
 	pm0 "github.com/TrixiS/pm0/internal/cli"
-	"github.com/TrixiS/pm0/internal/cli/command_context"
+	"github.com/TrixiS/pm0/internal/cli/command"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
 
-func Start(ctx *command_context.CommandContext) error {
-	if ctx.CLIContext.NArg() == 0 {
+func Start(ctx *command.Context) error {
+	if ctx.CLI.NArg() == 0 {
 		return fmt.Errorf("specify a binary and optional args")
 	}
 
@@ -21,14 +21,14 @@ func Start(ctx *command_context.CommandContext) error {
 		return err
 	}
 
-	name := ctx.CLIContext.String("name")
+	name := ctx.CLI.String("name")
 
 	if len(name) == 0 {
 		name = path.Base(cwd)
 	}
 
-	bin := ctx.CLIContext.Args().First()
-	args := ctx.CLIContext.Args().Tail()
+	bin := ctx.CLI.Args().First()
+	args := ctx.CLI.Args().Tail()
 
 	request := pb.StartRequest{
 		Name: name,
@@ -38,7 +38,7 @@ func Start(ctx *command_context.CommandContext) error {
 	}
 
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		response, err := client.Start(ctx.CLIContext.Context, &request)
+		response, err := client.Start(ctx.CLI.Context, &request)
 
 		if err != nil {
 			return err

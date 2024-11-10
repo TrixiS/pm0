@@ -4,12 +4,12 @@ import (
 	"fmt"
 
 	pm0 "github.com/TrixiS/pm0/internal/cli"
-	"github.com/TrixiS/pm0/internal/cli/command_context"
+	"github.com/TrixiS/pm0/internal/cli/command"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
 
-func Rename(ctx *command_context.CommandContext) error {
-	args := ctx.CLIContext.Args()
+func Rename(ctx *command.Context) error {
+	args := ctx.CLI.Args()
 	unitID, err := pm0.ParseStringUnitID(args.First())
 
 	if err != nil {
@@ -23,7 +23,7 @@ func Rename(ctx *command_context.CommandContext) error {
 	}
 
 	err = ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		_, err := client.Rename(ctx.CLIContext.Context, &pb.RenameRequest{
+		_, err := client.Rename(ctx.CLI.Context, &pb.RenameRequest{
 			UnitId: unitID,
 			Name:   name,
 		})
