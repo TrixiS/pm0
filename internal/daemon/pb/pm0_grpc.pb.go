@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v4.25.3
-// source: .proto/pm0.proto
+// source: api/pm0.proto
 
 package pb
 
@@ -558,5 +558,5 @@ var ProcessService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: ".proto/pm0.proto",
+	Metadata: "api/pm0.proto",
 }
