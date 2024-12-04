@@ -2,6 +2,7 @@ package commands
 
 import (
 	"os"
+	"slices"
 
 	pm0 "github.com/TrixiS/pm0/internal/cli"
 	"github.com/TrixiS/pm0/internal/cli/command"
@@ -22,6 +23,18 @@ func List(ctx *command.Context) error {
 		if len(response.Units) == 0 {
 			return pm0.ErrEmptyUnits
 		}
+
+		slices.SortFunc(response.Units, func(a *pb.Unit, b *pb.Unit) int {
+			if a.Id < b.Id {
+				return -1
+			}
+
+			if a.Id > b.Id {
+				return 1
+			}
+
+			return 0
+		})
 
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
