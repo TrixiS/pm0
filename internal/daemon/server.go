@@ -227,12 +227,12 @@ func (s *DaemonServer) deleteUnitsStream(
 				return stream.Send(response)
 			}
 
-			unit.Stop()
-			db.DeleteStruct(&unit.Model)
-
 			s.unitsMu.Lock()
 			delete(s.units, unit.Model.ID)
 			s.unitsMu.Unlock()
+
+			unit.Stop()
+			db.DeleteStruct(&unit.Model)
 
 			return stream.Send(&pb.StopResponse{
 				UnitId: id,
