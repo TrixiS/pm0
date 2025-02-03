@@ -15,16 +15,24 @@ func Start(ctx *command.Context) error {
 		return fmt.Errorf("specify a binary and optional args")
 	}
 
-	cwd, err := os.Getwd()
+	osCwd, err := os.Getwd()
 
 	if err != nil {
 		return err
 	}
 
+	var cwd string
+
+	if ctx.CLI.IsSet("cwd") {
+		cwd = ctx.CLI.String("cwd")
+	} else {
+		cwd = osCwd
+	}
+
 	name := ctx.CLI.String("name")
 
 	if len(name) == 0 {
-		name = path.Base(cwd)
+		name = path.Base(osCwd)
 	}
 
 	bin := ctx.CLI.Args().First()

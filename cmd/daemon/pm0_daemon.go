@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"net"
 	"os"
 	"path"
@@ -20,19 +20,19 @@ func main() {
 	pm0Dirpath, err := utils.GetPM0Dirpath()
 
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	logsDirpath := path.Join(pm0Dirpath, "logs")
 
 	if err := os.MkdirAll(logsDirpath, 0777); err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	lis, err := net.Listen("tcp", "localhost:7777")
 
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		panic(err)
 	}
 
 	dbFilepath := path.Join(pm0Dirpath, DaemonDBFilename)
@@ -40,7 +40,7 @@ func main() {
 		db, err := storm.Open(dbFilepath)
 
 		if err != nil {
-			log.Fatalf("db open: %v", err)
+			panic(err)
 		}
 
 		return db
@@ -54,7 +54,7 @@ func main() {
 	var unitModels []daemon.UnitModel
 
 	if err := db.All(&unitModels); err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	db.Close()
@@ -70,7 +70,7 @@ func main() {
 			_, err := daemonServer.StartUnit(model)
 
 			if err != nil {
-				log.Println("start unit", model.ID, err.Error())
+				slog.Error("start unit", model.ID, "err", err)
 			}
 		}()
 	}
@@ -79,5 +79,8 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 	pb.RegisterProcessServiceServer(grpcServer, daemonServer)
-	log.Fatal(grpcServer.Serve(lis))
+
+	if err := grpcServer.Serve(lis); err != nil {
+		panic(err)
+	}
 }

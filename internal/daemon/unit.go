@@ -34,7 +34,7 @@ type Unit struct {
 	Cancel    func()
 }
 
-func (u Unit) Status() UnitStatus {
+func (u *Unit) Status() UnitStatus {
 	if u.Cancel == nil {
 		return UnitStatusStopped
 	}
@@ -53,7 +53,7 @@ func (u Unit) Status() UnitStatus {
 	}
 }
 
-func (u Unit) PB() *pb.Unit {
+func (u *Unit) PB() *pb.Unit {
 	var pid *int32
 
 	unitStatus := u.Status()

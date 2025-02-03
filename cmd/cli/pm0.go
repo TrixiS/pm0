@@ -69,6 +69,10 @@ func main() {
 						Name:     "name",
 						Required: false,
 					},
+					&cli.StringFlag{
+						Name:     "cwd",
+						Required: false,
+					},
 				},
 				Usage:     "Start a unit",
 				UsageText: "command",

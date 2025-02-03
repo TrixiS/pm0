@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path"
@@ -23,7 +24,7 @@ import (
 
 const (
 	logFilePerm                    = 0o660
-	failRestartDelay time.Duration = time.Second * 5
+	unitRestartDelay time.Duration = time.Second * 5
 )
 
 var emptyResponse = &emptypb.Empty{}
@@ -60,12 +61,19 @@ func (s *DaemonServer) openUnitLogFile(unitID uint64) (*os.File, error) {
 }
 
 func (s *DaemonServer) watchUnit(unit *Unit) {
+	slog.Info("unit started", "id", unit.Model.ID)
+
 	unit.Command.Wait()
 	unit.LogFile.Close()
 
-	if unit.Status() != UnitStatusFailed {
+	status := unit.Status()
+	slog.Info("unit stopped", "id", unit.Model.ID, "status", status)
+
+	if status != UnitStatusFailed {
 		return
 	}
+
+	time.Sleep(unitRestartDelay)
 
 	s.unitsMu.RLock()
 
@@ -76,8 +84,14 @@ func (s *DaemonServer) watchUnit(unit *Unit) {
 
 	s.unitsMu.RUnlock()
 
-	time.Sleep(failRestartDelay)
-	s.StartUnit(unit.Model)
+	_, err := s.StartUnit(unit.Model)
+
+	if err != nil {
+		slog.Error("restart unit", "id", unit.Model.ID, "err", err)
+		return
+	}
+
+	slog.Info("restarted unit", "id", unit.Model.ID)
 }
 
 func (s *DaemonServer) StartUnit(model UnitModel) (*Unit, error) {
@@ -87,11 +101,15 @@ func (s *DaemonServer) StartUnit(model UnitModel) (*Unit, error) {
 		return nil, err
 	}
 
-	unitCtx, cancel := context.WithCancel(context.Background())
-	command := createUnitStartCommand(unitCtx, &model, logFile)
+	ctx, cancel := context.WithCancel(context.Background())
+	command := createUnitStartCommand(ctx, &model, logFile)
+
+	s.unitsMu.Lock()
+	defer s.unitsMu.Unlock()
 
 	if err := command.Start(); err != nil {
 		cancel()
+		logFile.Close()
 		return nil, err
 	}
 
@@ -103,10 +121,7 @@ func (s *DaemonServer) StartUnit(model UnitModel) (*Unit, error) {
 		Cancel:    cancel,
 	}
 
-	s.unitsMu.Lock()
 	s.units[unit.Model.ID] = unit
-	s.unitsMu.Unlock()
-
 	go s.watchUnit(unit)
 
 	return unit, nil
@@ -211,15 +226,16 @@ func (s *DaemonServer) deleteUnitsStream(
 	defer db.Commit()
 	defer db.Close()
 
+	s.unitsMu.Lock()
+	defer s.unitsMu.Unlock()
+
 	eg, _ := errgroup.WithContext(stream.Context())
 
 	for _, unitID := range unitIDs {
 		id := unitID
 
 		eg.Go(func() error {
-			s.unitsMu.RLock()
 			unit := s.units[id]
-			s.unitsMu.RUnlock()
 
 			if unit == nil {
 				response := &pb.StopResponse{UnitId: id}
@@ -227,12 +243,11 @@ func (s *DaemonServer) deleteUnitsStream(
 				return stream.Send(response)
 			}
 
-			s.unitsMu.Lock()
 			delete(s.units, unit.Model.ID)
-			s.unitsMu.Unlock()
-
 			unit.Stop()
 			db.DeleteStruct(&unit.Model)
+
+			slog.Info("deleted unit", "id", unit.Model.ID)
 
 			return stream.Send(&pb.StopResponse{
 				UnitId: id,
@@ -297,8 +312,8 @@ func (s *DaemonServer) Start(
 	}
 
 	if err := tx.Commit(); err != nil {
-		unit.Stop()
 		s.unitsMu.Lock()
+		unit.Stop()
 		delete(s.units, unit.Model.ID)
 		s.unitsMu.Unlock()
 		return nil, status.Error(codes.Internal, err.Error())
@@ -356,7 +371,7 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 	const (
 		LogsTailDefault    uint64 = 32
 		LogsTailMax        uint64 = 1000
-		LogsMaxBytes       uint32 = 4 * 1024 * 1024 // 4 MB
+		LogsMaxBytes       uint32 = 4 * 1024 * 1024
 		LogsFollowInterval        = time.Second
 	)
 
