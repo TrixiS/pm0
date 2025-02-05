@@ -1,0 +1,38 @@
+name: Build and Release Binaries
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.21.x'
+
+      - name: Build pm0 Binary
+        run: |
+          go build -o pm0 ./cmd/cli/main.go
+
+      - name: Build pm0_daemon Binary
+        run: |
+          go build -o pm0_daemon ./cmd/daemon/main.go
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag: ${{ github.ref }}
+          files: |
+            pm0
+            pm0_daemon
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
