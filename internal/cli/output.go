@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -18,8 +17,6 @@ var (
 	failedStatusString  = text.FgRed.Sprint("Failed")
 	stoppedStatusString = text.FgYellow.Sprint("Stopped")
 )
-
-var ErrNoIdent = errors.New("provide at least one unit identifier (id or name)")
 
 func Printf(format string, args ...any) {
 	fmt.Printf(pm0OutputPrefix+format+"\n", args...)
