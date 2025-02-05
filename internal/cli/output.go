@@ -25,14 +25,6 @@ func Printf(format string, args ...any) {
 	fmt.Printf(pm0OutputPrefix+format+"\n", args...)
 }
 
-func FormatNillablePointer[T any](ptr *T) string {
-	if ptr == nil {
-		return tableNoneString
-	}
-
-	return fmt.Sprintf("%v", *ptr)
-}
-
 func FormatUnitUptime(startedAt int64, status daemon.UnitStatus) string {
 	if status != daemon.UnitStatusRunning {
 		return tableNoneString

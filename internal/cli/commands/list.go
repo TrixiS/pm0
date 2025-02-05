@@ -54,7 +54,7 @@ func List(ctx *command.Context) error {
 			t.AppendRow(table.Row{
 				unit.Id,
 				unit.Name,
-				pm0.FormatNillablePointer(unit.Pid),
+				unit.Pid,
 				pm0.FormatUnitStatus(unitStatus),
 				unit.RestartsCount,
 				pm0.FormatUnitUptime(unit.StartedAt, unitStatus),

@@ -10,7 +10,7 @@ import "google/protobuf/empty.proto";
 message Unit {
     uint64 id = 1;
     string name = 2;
-    optional int32 pid = 3;
+    int32 pid = 3;
     uint32 status = 4;
     uint32 restarts_count = 5;
     int64 started_at = 6;

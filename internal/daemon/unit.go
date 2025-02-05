@@ -54,13 +54,12 @@ func (u *Unit) Status() UnitStatus {
 }
 
 func (u *Unit) PB() *pb.Unit {
-	var pid *int32
+	var pid int32
 
 	unitStatus := u.Status()
 
 	if unitStatus == UnitStatusRunning {
-		int32Pid := int32(u.Command.Process.Pid)
-		pid = &int32Pid
+		pid = int32(u.Command.Process.Pid)
 	}
 
 	return &pb.Unit{
