@@ -52,7 +52,7 @@ func Start(ctx *command.Context) error {
 			return err
 		}
 
-		pm0.Printf("started unit %s (%d) with PID %d", name, response.Unit.Id, *response.Unit.Pid)
+		pm0.Printf("started unit %s (%d) with PID %d", name, response.Unit.Id, response.Unit.Pid)
 		return nil
 	})
 }

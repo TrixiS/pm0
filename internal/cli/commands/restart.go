@@ -58,7 +58,7 @@ func readRestartStream(stream pb.ProcessService_RestartClient) error {
 				"restarted unit %s (%d) with PID %d",
 				response.Unit.Name,
 				response.Unit.Id,
-				*response.Unit.Pid,
+				response.Unit.Pid,
 			)
 
 			continue
