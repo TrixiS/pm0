@@ -24,6 +24,7 @@ type UnitModel struct {
 	Bin           string
 	Args          []string
 	RestartsCount uint32
+	Env           []string
 }
 
 type Unit struct {

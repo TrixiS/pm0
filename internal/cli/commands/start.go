@@ -43,6 +43,7 @@ func Start(ctx *command.Context) error {
 		Bin:  bin,
 		Args: args,
 		Cwd:  cwd,
+		Env:  ctx.CLI.StringSlice("env"),
 	}
 
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {

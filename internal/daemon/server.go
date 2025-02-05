@@ -299,6 +299,7 @@ func (s *DaemonServer) Start(
 		Bin:  request.Bin,
 		CWD:  request.Cwd,
 		Args: request.Args,
+		Env:  request.Env,
 	}
 
 	if err := tx.Save(&unitModel); err != nil {
@@ -579,6 +580,7 @@ func (s *DaemonServer) Rename(
 
 func createUnitStartCommand(ctx context.Context, model *UnitModel, logFile *os.File) *exec.Cmd {
 	command := exec.CommandContext(ctx, model.Bin, model.Args...)
+	command.Env = model.Env
 	command.Dir = model.CWD
 	command.Stdout = logFile
 	command.Stderr = logFile

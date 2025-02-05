@@ -21,6 +21,7 @@ message StartRequest {
     string bin = 2;
     string name = 3;
     repeated string args = 4;
+    repeated string env = 5;
 }
 
 message StartResponse {

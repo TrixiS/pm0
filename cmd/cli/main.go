@@ -73,6 +73,11 @@ func main() {
 						Name:     "cwd",
 						Required: false,
 					},
+					&cli.StringSliceFlag{
+						Name:     "env",
+						Required: false,
+						Aliases:  []string{"e"},
+					},
 				},
 				Usage:     "Start a unit",
 				UsageText: "command",
