@@ -542,9 +542,7 @@ func (s *DaemonServer) LogsClear(
 	ctx context.Context,
 	request *pb.LogsClearRequest,
 ) (*emptypb.Empty, error) {
-	for _, id := range request.UnitIds {
-		unitID := id
-
+	for _, unitID := range request.UnitIds {
 		if s.units[unitID] == nil {
 			continue
 		}
