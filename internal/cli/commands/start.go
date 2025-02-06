@@ -21,12 +21,14 @@ func Start(ctx *command.Context) error {
 		return err
 	}
 
-	var cwd string
+	cwd := osCwd
 
 	if ctx.CLI.IsSet("cwd") {
 		cwd = ctx.CLI.String("cwd")
-	} else {
-		cwd = osCwd
+
+		if !path.IsAbs(cwd) {
+			cwd = path.Join(osCwd, cwd)
+		}
 	}
 
 	name := ctx.CLI.String("name")
