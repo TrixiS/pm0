@@ -316,8 +316,15 @@ func (s *DaemonServer) Start(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	var pid int32
+
+	if unit.Status() == UnitStatusRunning {
+		pid = int32(unit.Command.Process.Pid)
+	}
+
 	response := pb.StartResponse{
-		Unit: unit.PB(),
+		Id:  unit.Model.ID,
+		Pid: pid,
 	}
 
 	return &response, nil
@@ -529,6 +536,7 @@ func (s *DaemonServer) Show(
 		Name:    unit.Model.Name,
 		Cwd:     unit.Model.CWD,
 		Command: strings.Join(unit.Command.Args, " "),
+		Env:     unit.Model.Env,
 	}
 
 	return &response, nil

@@ -156,11 +156,8 @@ func main() {
 			},
 			{
 				Name: "update",
+				Args: true,
 				Flags: []cli.Flag{
-					&cli.Uint64Flag{
-						Name:     "id",
-						Required: true,
-					},
 					&cli.StringFlag{
 						Name: "name",
 					},

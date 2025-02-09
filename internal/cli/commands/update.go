@@ -7,18 +7,27 @@ import (
 )
 
 func Update(ctx *command.Context) error {
-	name := ctx.CLI.String("name")
-	unitID := ctx.CLI.Uint64("id")
+	unitID, err := pm0.ParseStringUnitID(ctx.CLI.Args().First())
 
-	err := ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
+	if err != nil {
+		return err
+	}
+
+	name := ctx.CLI.String("name")
+
+	err = ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
 		response, err := client.Update(ctx.CLI.Context, &pb.UpdateRequst{
 			UnitId: unitID,
 			Name:   name,
 			Env:    ctx.CLI.StringSlice("env"),
 		})
 
+		if err != nil {
+			return err
+		}
+
 		name = response.Name
-		return err
+		return nil
 	})
 
 	if err != nil {

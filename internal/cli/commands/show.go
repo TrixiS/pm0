@@ -2,6 +2,7 @@ package commands
 
 import (
 	"os"
+	"strings"
 
 	pm0 "github.com/TrixiS/pm0/internal/cli"
 
@@ -45,6 +46,7 @@ func Show(ctx *command.Context) error {
 			{"Name", response.Name},
 			{"CWD", response.Cwd},
 			{"Command", response.Command},
+			{"Env", strings.Join(response.Env, " ")},
 		})
 
 		t.Render()

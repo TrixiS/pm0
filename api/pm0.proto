@@ -6,7 +6,6 @@ option go_package = "./pb";
 
 import "google/protobuf/empty.proto";
 
-
 message Unit {
     uint64 id = 1;
     string name = 2;
@@ -25,7 +24,8 @@ message StartRequest {
 }
 
 message StartResponse {
-    Unit unit = 1;
+    uint64 id = 1;
+    int32 pid = 2;
 }
 
 message ListResponse {
@@ -61,6 +61,7 @@ message ShowResponse {
     string name = 2;
     string cwd = 3;
     string command = 4;
+    repeated string env = 5;
 }
 
 message LogsClearRequest {
