@@ -1,33 +1,23 @@
 package commands
 
 import (
-	"fmt"
-
 	pm0 "github.com/TrixiS/pm0/internal/cli"
 	"github.com/TrixiS/pm0/internal/cli/command"
 	"github.com/TrixiS/pm0/internal/daemon/pb"
 )
 
-func Rename(ctx *command.Context) error {
-	args := ctx.CLI.Args()
-	unitID, err := pm0.ParseStringUnitID(args.First())
+func Update(ctx *command.Context) error {
+	name := ctx.CLI.String("name")
+	unitID := ctx.CLI.Uint64("id")
 
-	if err != nil {
-		return err
-	}
-
-	name := args.Get(1)
-
-	if name == "" {
-		return fmt.Errorf("provide a new name with the second argument")
-	}
-
-	err = ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
-		_, err := client.Rename(ctx.CLI.Context, &pb.RenameRequest{
+	err := ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
+		response, err := client.Update(ctx.CLI.Context, &pb.UpdateRequst{
 			UnitId: unitID,
 			Name:   name,
+			Env:    ctx.CLI.StringSlice("env"),
 		})
 
+		name = response.Name
 		return err
 	})
 
@@ -35,6 +25,6 @@ func Rename(ctx *command.Context) error {
 		return err
 	}
 
-	pm0.Printf("renamed %s (%d)", name, unitID)
+	pm0.Printf("updated %s (%d)", name, unitID)
 	return nil
 }

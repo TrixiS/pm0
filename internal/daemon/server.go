@@ -173,8 +173,6 @@ func (s *DaemonServer) restartUnitsStream(
 	stream pb.ProcessService_RestartServer,
 ) error {
 	db := s.Options.DBFactory()
-
-	defer db.Commit()
 	defer db.Close()
 
 	eg, _ := errgroup.WithContext(stream.Context())
@@ -222,8 +220,6 @@ func (s *DaemonServer) deleteUnitsStream(
 	stream pb.ProcessService_DeleteServer,
 ) error {
 	db := s.Options.DBFactory()
-
-	defer db.Commit()
 	defer db.Close()
 
 	s.unitsMu.Lock()
@@ -556,24 +552,63 @@ func (s *DaemonServer) LogsClear(
 	return emptyResponse, nil
 }
 
-func (s *DaemonServer) Rename(
+func (s *DaemonServer) Update(
 	ctx context.Context,
-	request *pb.RenameRequest,
-) (*emptypb.Empty, error) {
+	request *pb.UpdateRequst,
+) (*pb.UpdateResponse, error) {
+	s.unitsMu.Lock()
+	defer s.unitsMu.Unlock()
+
 	unit := s.units[request.UnitId]
 
 	if unit == nil {
 		return nil, status.Errorf(codes.NotFound, "unit %d not found", request.UnitId)
 	}
 
-	unit.Model.Name = request.Name
+	if len(request.Name) > 0 {
+		unit.Model.Name = request.Name
+	}
+
+	if len(request.Env) > 0 {
+		unit.Model.Env = updateEnv(unit.Model.Env, request.Env)
+	}
 
 	db := s.Options.DBFactory()
 	db.Update(&unit.Model)
-	db.Commit()
 	db.Close()
 
-	return emptyResponse, nil
+	response := pb.UpdateResponse{
+		Name: unit.Model.Name,
+	}
+
+	return &response, nil
+}
+
+func updateEnv(currentEnv []string, newEnv []string) []string {
+	envMap := make(map[string]string, len(currentEnv)+len(newEnv))
+
+	for _, e := range currentEnv {
+		k, v, _ := strings.Cut(e, "=")
+		envMap[k] = v
+	}
+
+	for _, e := range newEnv {
+		k, v, _ := strings.Cut(e, "=")
+
+		if len(v) == 0 {
+			delete(envMap, k)
+		} else {
+			envMap[k] = v
+		}
+	}
+
+	updatedEnv := make([]string, 0, len(envMap))
+
+	for k, v := range envMap {
+		updatedEnv = append(updatedEnv, k+"="+v)
+	}
+
+	return updatedEnv
 }
 
 func createUnitStartCommand(ctx context.Context, model *UnitModel, logFile *os.File) *exec.Cmd {

@@ -145,12 +145,6 @@ func main() {
 				},
 			},
 			{
-				Name:   "rename",
-				Usage:  "Rename a unit",
-				Args:   true,
-				Action: contextProvider.Wraps(commands.Rename),
-			},
-			{
 				Name:   "show",
 				Usage:  "Show unit info",
 				Args:   true,
@@ -159,6 +153,23 @@ func main() {
 			{
 				Name:   "setup",
 				Action: contextProvider.Wraps(commands.Setup),
+			},
+			{
+				Name: "update",
+				Flags: []cli.Flag{
+					&cli.Uint64Flag{
+						Name:     "id",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name: "name",
+					},
+					&cli.StringSliceFlag{
+						Name:    "env",
+						Aliases: []string{"e"},
+					},
+				},
+				Action: contextProvider.Wraps(commands.Update),
 			},
 		},
 	}

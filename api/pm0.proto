@@ -71,9 +71,14 @@ message ExceptRequest {
     repeated uint64 unit_ids = 1;
 }
 
-message RenameRequest {
+message UpdateRequst {
     uint64 unit_id = 1;
     string name = 2;
+    repeated string env = 3;
+}
+
+message UpdateResponse {
+    string name = 1;
 }
 
 service ProcessService {
@@ -88,5 +93,5 @@ service ProcessService {
     rpc DeleteAll(ExceptRequest) returns (stream StopResponse); 
     rpc Show(ShowRequest) returns (ShowResponse);
     rpc LogsClear(LogsClearRequest) returns (google.protobuf.Empty);
-    rpc Rename(RenameRequest) returns (google.protobuf.Empty);
+    rpc Update(UpdateRequst) returns (UpdateResponse);
 }
