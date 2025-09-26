@@ -373,10 +373,8 @@ func (s *DaemonServer) RestartAll(
 
 func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_LogsServer) error {
 	const (
-		LogsTailDefault    uint64 = 32
-		LogsTailMax        uint64 = 1000
-		LogsMaxBytes       uint32 = 4 * 1024 * 1024
-		LogsFollowInterval        = time.Second
+		followInterval = time.Second
+		chunkSize      = 1024
 	)
 
 	s.unitsMu.RLock()
@@ -402,105 +400,103 @@ func (s *DaemonServer) Logs(request *pb.LogsRequest, stream pb.ProcessService_Lo
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	var tailAmount uint64
-
-	if request.Lines == 0 {
-		tailAmount = LogsTailDefault
-	} else {
-		tailAmount = min(request.Lines, LogsTailMax)
-	}
-
-	const NEWLINE byte = 0xA
-	const RETURN byte = 0xD
-
-	lines := make([]string, 0, tailAmount)
-
-	var lineBytesCount uint32 = 0
-	var lineBuf []byte = nil
-
+	charBuf := make([]byte, chunkSize)
+	linesSent := uint64(0)
+	lineBuf := make([]byte, 0, chunkSize)
 	tailBreakPoint := -stat.Size()
-	var tailCursor int64 = 0
+	tailCursor := int64(0)
 
-	appendLine := func() {
-		slices.Reverse(lineBuf)
-		lines = append(lines, string(lineBuf))
-	}
+	response := pb.LogsResponse{}
 
+tailLoop:
 	for {
-		tailCursor -= 1
+		tailCursor = max(tailBreakPoint, tailCursor-chunkSize)
 
-		_, err := logFile.Seek(tailCursor, io.SeekEnd)
+		if _, err := logFile.Seek(tailCursor, io.SeekEnd); err != nil {
+			break
+		}
+
+		read, err := logFile.Read(charBuf)
 
 		if err != nil {
 			break
 		}
 
-		charBuf := make([]byte, 1)
-		_, err = logFile.Read(charBuf)
+		bytes := charBuf[:read]
 
-		if err != nil {
-			break
-		}
+		for i := len(bytes) - 1; i >= 0; i-- {
+			char := bytes[i]
 
-		char := charBuf[0]
-
-		if char != NEWLINE && char != RETURN {
-			lineBuf = append(lineBuf, char)
-			lineBytesCount += 1
-
-			if lineBytesCount >= LogsMaxBytes {
-				appendLine()
-				break
-			}
-
-			if tailCursor != tailBreakPoint {
+			if char != '\n' && char != '\r' {
+				lineBuf = append(lineBuf, char)
 				continue
 			}
+
+			if len(lineBuf) == 0 {
+				continue
+			}
+
+			slices.Reverse(lineBuf)
+			response.Line = string(lineBuf)
+
+			if err := stream.Send(&response); err != nil {
+				return err
+			}
+
+			linesSent += 1
+
+			if linesSent >= request.Lines {
+				break tailLoop
+			}
+
+			lineBuf = lineBuf[:0]
 		}
 
 		if len(lineBuf) > 0 {
-			appendLine()
+			slices.Reverse(lineBuf)
+			response.Line = string(lineBuf)
+
+			if err := stream.Send(&response); err != nil {
+				return err
+			}
 		}
 
-		if uint64(len(lines)) >= tailAmount || tailCursor == tailBreakPoint {
+		if tailCursor <= tailBreakPoint {
 			break
 		}
 
-		clear(lineBuf)
+		clear(charBuf)
 	}
 
-	slices.Reverse(lines)
+	response.Flush = true
+	response.Line = ""
 
-	err = stream.Send(&pb.LogsResponse{
-		Lines: lines,
-	})
-
-	if err != nil || !request.Follow {
+	if err := stream.Send(&response); err != nil {
 		return err
 	}
 
-	_, err = logFile.Seek(0, io.SeekEnd)
+	if !request.Follow {
+		return nil
+	}
 
-	if err != nil {
-		return err
+	if _, err = logFile.Seek(0, io.SeekEnd); err != nil {
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	for {
-		time.Sleep(LogsFollowInterval)
+		time.Sleep(followInterval)
 		scanner := bufio.NewScanner(logFile)
 
-		var lines []string = nil
-
 		for scanner.Scan() {
-			lines = append(lines, scanner.Text())
+			response.Line = scanner.Text()
+
+			if err := stream.Send(&response); err != nil {
+				return err
+			}
 		}
 
-		if len(lines) == 0 {
-			continue
-		}
-
-		if err := stream.Send(&pb.LogsResponse{Lines: lines}); err != nil {
-			return err
+		if scanner.Err() != nil {
+			return status.Error(codes.Internal, err.Error())
 		}
 	}
 }

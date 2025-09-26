@@ -115,6 +115,7 @@ func main() {
 					&cli.Uint64Flag{
 						Name:     "lines",
 						Required: false,
+						Value:    32,
 					},
 					&cli.BoolFlag{
 						Name:     "follow",

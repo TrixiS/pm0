@@ -2,97 +2,98 @@ syntax = "proto3";
 
 package pm0;
 
-option go_package = "./pb";
-
 import "google/protobuf/empty.proto";
 
+option go_package = "./pb";
+
 message Unit {
-    uint64 id = 1;
-    string name = 2;
-    int32 pid = 3;
-    uint32 status = 4;
-    uint32 restarts_count = 5;
-    int64 started_at = 6;
+  uint64 id = 1;
+  string name = 2;
+  int32 pid = 3;
+  uint32 status = 4;
+  uint32 restarts_count = 5;
+  int64 started_at = 6;
 }
 
 message StartRequest {
-    string cwd = 1;
-    string bin = 2;
-    string name = 3;
-    repeated string args = 4;
-    repeated string env = 5;
+  string cwd = 1;
+  string bin = 2;
+  string name = 3;
+  repeated string args = 4;
+  repeated string env = 5;
 }
 
 message StartResponse {
-    uint64 id = 1;
-    int32 pid = 2;
+  uint64 id = 1;
+  int32 pid = 2;
 }
 
 message ListResponse {
-    repeated Unit units = 1;
+  repeated Unit units = 1;
 }
 
 message StopRequest {
-    repeated uint64 unit_ids = 1;
+  repeated uint64 unit_ids = 1;
 }
 
 message StopResponse {
-    uint64 unit_id = 1;
-    optional Unit unit = 2;
-    string error = 3;
+  uint64 unit_id = 1;
+  optional Unit unit = 2;
+  string error = 3;
 }
 
 message LogsRequest {
-    uint64 unit_id = 1;
-    bool follow = 2;
-    uint64 lines = 3;
+  uint64 unit_id = 1;
+  bool follow = 2;
+  uint64 lines = 3;
 }
 
 message LogsResponse {
-    repeated string lines = 1;
+  string line = 1;
+  bool flush = 2;
 }
 
 message ShowRequest {
-    uint64 unit_id = 1;
+  uint64 unit_id = 1;
 }
 
 message ShowResponse {
-    uint64 id = 1;
-    string name = 2;
-    string cwd = 3;
-    string command = 4;
-    repeated string env = 5;
+  uint64 id = 1;
+  string name = 2;
+  string cwd = 3;
+  string command = 4;
+  repeated string env = 5;
 }
 
 message LogsClearRequest {
-    repeated uint64 unit_ids = 1;
+  repeated uint64 unit_ids = 1;
 }
 
 message ExceptRequest {
-    repeated uint64 unit_ids = 1;
+  repeated uint64 unit_ids = 1;
 }
 
 message UpdateRequst {
-    uint64 unit_id = 1;
-    string name = 2;
-    repeated string env = 3;
+  uint64 unit_id = 1;
+  string name = 2;
+  repeated string env = 3;
 }
 
 message UpdateResponse {
-    string name = 1;
+  string name = 1;
 }
 
 service ProcessService {
-    rpc Start(StartRequest) returns (StartResponse);
-    rpc List(google.protobuf.Empty) returns (ListResponse);
-    rpc Stop(StopRequest) returns (stream StopResponse);
-    rpc StopAll(ExceptRequest) returns (stream StopResponse);
-    rpc Restart(StopRequest) returns (stream StopResponse);
-    rpc RestartAll(ExceptRequest) returns (stream StopResponse);
-    rpc Logs(LogsRequest) returns (stream LogsResponse);
-    rpc Delete(StopRequest) returns (stream StopResponse); 
-    rpc DeleteAll(ExceptRequest) returns (stream StopResponse); 
-    rpc Show(ShowRequest) returns (ShowResponse);
-    rpc LogsClear(LogsClearRequest) returns (google.protobuf.Empty);
-    rpc Update(UpdateRequst) returns (UpdateResponse);
+  rpc Start(StartRequest) returns (StartResponse);
+  rpc List(google.protobuf.Empty) returns (ListResponse);
+  rpc Stop(StopRequest) returns (stream StopResponse);
+  rpc StopAll(ExceptRequest) returns (stream StopResponse);
+  rpc Restart(StopRequest) returns (stream StopResponse);
+  rpc RestartAll(ExceptRequest) returns (stream StopResponse);
+  rpc Logs(LogsRequest) returns (stream LogsResponse);
+  rpc Delete(StopRequest) returns (stream StopResponse);
+  rpc DeleteAll(ExceptRequest) returns (stream StopResponse);
+  rpc Show(ShowRequest) returns (ShowResponse);
+  rpc LogsClear(LogsClearRequest) returns (google.protobuf.Empty);
+  rpc Update(UpdateRequst) returns (UpdateResponse);
 }

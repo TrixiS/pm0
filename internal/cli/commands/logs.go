@@ -1,10 +1,8 @@
 package commands
 
 import (
-	"errors"
 	"fmt"
 	"io"
-	"strings"
 
 	pm0 "github.com/TrixiS/pm0/internal/cli"
 	"github.com/TrixiS/pm0/internal/cli/command"
@@ -18,13 +16,16 @@ func Logs(ctx *command.Context) error {
 		return err
 	}
 
+	linesCount := ctx.CLI.Uint64("lines")
+	follow := ctx.CLI.Bool("follow")
+
 	return ctx.Provider.WithClient(func(client pb.ProcessServiceClient) error {
 		stream, err := client.Logs(
 			ctx.CLI.Context,
 			&pb.LogsRequest{
 				UnitId: unitID,
-				Follow: ctx.CLI.Bool("follow"),
-				Lines:  ctx.CLI.Uint64("lines"),
+				Follow: follow,
+				Lines:  linesCount,
 			},
 		)
 
@@ -32,21 +33,36 @@ func Logs(ctx *command.Context) error {
 			return err
 		}
 
+		tailLines := make([]string, 0, linesCount)
+
 		for {
-			var response pb.LogsResponse
+			response := pb.LogsResponse{}
 
-			err := stream.RecvMsg(&response)
-
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					return nil
+			if err := stream.RecvMsg(&response); err != nil {
+				if err == io.EOF {
+					break
 				}
 
 				return err
 			}
 
-			joinedLines := strings.Join(response.Lines, "\n")
-			fmt.Println(joinedLines)
+			if !response.Flush {
+				tailLines = append(tailLines, response.Line)
+				continue
+			}
+
+			if len(tailLines) == 0 {
+				fmt.Println(response.Line)
+				continue
+			}
+
+			for i := len(tailLines) - 1; i >= 0; i-- {
+				fmt.Println(tailLines[i])
+			}
+
+			tailLines = nil
 		}
+
+		return nil
 	})
 }
